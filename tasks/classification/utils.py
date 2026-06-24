@@ -10,8 +10,8 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 import scipy
 
-from tasks.classification.dataset import DatasetGenerator, ToTensor
-# from tasks.classification.models.MobileNet import MobileNetV3
+# DatasetGenerator / ToTensor imported lazily inside get_datasetloader to avoid
+# pulling in imgaug at module load time (imgaug uses np.sctypes, removed in NumPy 2.0).
 
 
 def check_path_existence(*args):
@@ -57,6 +57,7 @@ def get_datasetloader(config: Dict, data_markup: Dict, images: Dict = None, run_
         augment = True
         random_crop = True
 
+    from tasks.classification.dataset import DatasetGenerator, ToTensor  # noqa: PLC0415
     if images is None:
         images = []
         for img_name in tqdm(data_markup):

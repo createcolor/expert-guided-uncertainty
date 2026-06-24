@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import torch
 from datasets import Dataset
-from process_dataset import id2label, label2id
+from tasks.qa.bert.process_dataset import id2label, label2id
 from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
