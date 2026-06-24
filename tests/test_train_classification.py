@@ -148,7 +148,7 @@ class TestClassificationInference:
         assert isinstance(outputs, dict)
         assert len(outputs) == N_SAMPLES
         for name, val in outputs.items():
-            assert isinstance(val, float) or isinstance(val, (int, float))
+            assert isinstance(val, (float, int, np.floating)), f"Unexpected type {type(val)}"
             assert 0.0 <= float(val) <= 1.0, f"Output {val} out of [0,1] range"
 
     def test_run_net_with_true_labels_shapes(self):
