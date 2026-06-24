@@ -1,5 +1,5 @@
 {
-    "model_name": "/mnt/nuberg/datasets/medical_data/bert/ensemble_final_decision_v2",
+    "model_name": "data/bert/ensemble_final_decision_v2",
     "model_params": {},
     "tokenizer_params": {}
 }

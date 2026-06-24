@@ -11,12 +11,12 @@
 
     "learn_from_scratch": true,
 
-    "net_dir_path": "nets",
+    "net_dir_path": "data/nets",
     "loss_func": "CrossEntropyLoss",
 
     "dataset": {
         "type": "RIGA",
-        "data_path": "datasets/RIGA_crop/DiscRegion",
+        "data_path": "data/RIGA/DiscRegion",
         "gt_mode": "expert0",
         "params": {
             "sets": ["Magrabia", "MESSIDOR"]

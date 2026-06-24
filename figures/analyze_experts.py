@@ -14,15 +14,15 @@ def parse_args():
     parser = argparse.ArgumentParser("Analyzes experts")
     
     parser.add_argument('-r', '--dataset_dir', default=Path(
-        "/mnt/nuberg/datasets/medical_data/alvs_dataset_all"), type=Path, \
+        "data/BloodyWell"), type=Path, \
         help='Path to images')
-    
+
     parser.add_argument('-tm', '--test_markup', default=Path(
-        "/alpha/zaichenkova/expressto/markup/test_dataset.json"), \
+        "data/markup/test_dataset.json"), \
             type=Path, help='Path to test dataset markup')
-    
+
     parser.add_argument('-e', '--path2experts_markup', default=Path(
-        "/alpha/zaichenkova/expressto/markup/experts_info_per_alvs.json"), \
+        "data/markup/experts_info_per_alvs.json"), \
             type=Path, help='Path to experts markup')
 
     parser.add_argument('-log', '--log_dir', type=str, \

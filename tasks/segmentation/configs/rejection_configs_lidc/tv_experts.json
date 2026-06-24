@@ -1,0 +1,14 @@
+{
+    "models_predictions": "data/predictions/LIDC/e1/predictions.pt",
+    "expert_predictions": "data/LIDC/experts_lidc.pt",
+
+    "models_ids": 10,
+    "expert_ids": 1,
+
+    "models_method": "var",
+    "expert_method": "bern_var",
+
+    "dataset": "lidc",
+    "data_path": "data/LIDC/test_data.pickle",
+    "expert_id": 1
+}

@@ -1,0 +1,43 @@
+{
+    "net_dir_name": "unet_lidc_edl_e1",
+    "architecture": "unet",
+    "device_type": "cuda:1",
+    "n_channels": 1,
+    "n_classes": 2,
+    "epochs_total": 200,
+    "checkpoint_step": 20,
+    "validation_step": 5,
+    "nets_number": 10,
+
+    "learn_from_scratch": true,
+
+    "net_dir_path": "data/nets",
+    "loss_func": "EDL",
+
+    "dataset": {
+        "type": "LIDC",
+        "data_path": "data/LIDC/train_data.pickle",
+        "gt_mode": "expert1",
+        "params": {
+            "output_two_classes": true
+        }
+    },
+
+    "optimizer": {
+        "type": "Adam",
+        "params": {
+            "lr": 1e-04,
+            "weight_decay": 1e-04
+        }
+    },
+    "batch_size": 32,
+    "train_part": 0.75,
+
+    "lr_scheduler": {
+        "type": "StepLR",
+        "parameters": {
+            "gamma": 0.9,
+            "step_size": 10
+        }
+    }
+}

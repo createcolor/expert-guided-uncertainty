@@ -17,8 +17,8 @@
     "batch_size": 16,
     "freeze_convolutions": false,
 
-    "path2dataset": "/mnt/nuberg/datasets/medical_data/alvs_dataset_all",
-    "path2nets_dir": "/mnt/nuberg/datasets/medical_data/nets",
+    "path2dataset": "data/BloodyWell",
+    "path2nets_dir": "data/nets",
 
     "use_lr_scheduler": true, 
     "lr_scheduler": {"StepLR": {

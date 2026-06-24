@@ -1,0 +1,17 @@
+{
+    "models_predictions": "data/predictions/RIGA/e3/predictions.pt",
+    "expert_predictions": "data/predictions/RIGA/e3/predictions.pt",
+
+    "step_size": 15,
+    "total_epochs": 150,
+
+    "models_ids": 10,
+    "expert_ids": 10,
+
+    "models_method": "var",
+    "expert_method": "bern_var",
+
+    "dataset": "riga",
+    "data_path": "data/RIGA/DiscRegion",
+    "expert_id": 3
+}

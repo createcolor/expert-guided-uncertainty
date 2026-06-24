@@ -107,7 +107,6 @@ def select_synonyms(path2outputs, path2save):
 
 
 def main():
-    # data_dir = "/mnt/nuberg/datasets/medical_data/nets/mistral"
     data_dir = "."
     path2outputs = f"{data_dir}/mistral_synonyms.txt"
     select_synonyms(path2outputs, path2save=f"{data_dir}/synonyms.json")

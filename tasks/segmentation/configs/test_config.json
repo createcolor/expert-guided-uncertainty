@@ -1,0 +1,24 @@
+{
+    "model": "data/nets/unet_lidc_edl_e1",
+    "architecture": "unet",
+    "device": "cuda:1",
+    "nets": 10,
+    "epochs": 100,
+    "save_path": "data/predictions/LIDC/e1_edl",
+
+    "n_channels": 1,
+    "n_classes": 2,
+
+    "dataset": {
+        "type": "LIDC",
+        "data_path": "data/LIDC/test_data.pickle",
+        "gt_mode": "expert1",
+        "params": {
+            "output_two_classes": true,
+            "keep_names": true
+        }
+    },
+
+    "models_path": "data/nets",
+    "data_path": "data/LIDC/test_data.pickle"
+}

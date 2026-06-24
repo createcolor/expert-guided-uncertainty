@@ -93,6 +93,37 @@ expert-guided-uncertainty/
 
 ---
 
+## Data layout
+
+All scripts and configs use paths **relative to the repository root**. Place your data under:
+
+```
+expert-guided-uncertainty/
+└── data/
+    ├── BloodyWell/          # BloodyWell image dataset (classification)
+    ├── RIGA/                # RIGA multiclass segmentation dataset
+    │   └── DiscRegion/
+    ├── LIDC/                # LIDC-IDRI binary segmentation dataset
+    │   ├── train_data.pickle
+    │   ├── test_data.pickle
+    │   └── experts_lidc.pt  # Aggregated expert annotations
+    ├── nets/                # Trained model checkpoints
+    │   └── <net_name>/
+    ├── predictions/         # Saved inference outputs (segmentation)
+    │   ├── LIDC/
+    │   │   ├── e1/          # Base ensemble predictions
+    │   │   └── e1_cae/      # CAE predictions
+    │   └── RIGA/
+    │       └── e3/
+    ├── bert/                # BERT model checkpoints (QA)
+    │   └── ensemble_final_decision_v2/
+    └── markup/              # Additional markup files (experts, MCMC splits)
+```
+
+Run all scripts from the repository root so that relative paths resolve correctly.
+
+---
+
 ## Installation
 
 ```bash
@@ -134,27 +165,52 @@ python tasks/classification/rejection_curves.py \
 
 ### 2. Segmentation (LIDC-IDRI / RIGA)
 
-**Train UNet ensemble:**
+**Train UNet ensemble (RIGA, standard cross-entropy):**
 ```bash
-python tasks/segmentation/train.py -c tasks/segmentation/configs/<config>.json
+python tasks/segmentation/train.py -c tasks/segmentation/configs/train_ensemble.json
 ```
 
-**Run inference:**
+**Train UNet ensemble with EDL loss:**
 ```bash
-python tasks/segmentation/inference.py -c tasks/segmentation/configs/<test_config>.json
+# RIGA (multiclass)
+python tasks/segmentation/train.py -c tasks/segmentation/configs/train_ensemble_edl_riga.json
+
+# LIDC-IDRI (binary)
+python tasks/segmentation/train.py -c tasks/segmentation/configs/train_ensemble_edl_lidc.json
 ```
 
-**Compute pixel-level rejection curves (binary):**
+**Run inference and save predictions:**
 ```bash
+python tasks/segmentation/inference.py -c tasks/segmentation/configs/test_config.json
+```
+
+**Compute pixel-level rejection curves (binary, LIDC-IDRI):**
+```bash
+# Total variance — base ensemble (epistemic only)
 python tasks/segmentation/rejection_curves.py \
-  -c tasks/segmentation/configs/rejection_curve_ens.json \
+  -c tasks/segmentation/configs/rejection_configs_lidc/tv_base.json \
+  -s results/segmentation/binary/
+
+# Total variance — CAE (epistemic + aleatoric)
+python tasks/segmentation/rejection_curves.py \
+  -c tasks/segmentation/configs/rejection_configs_lidc/tv_cae.json \
+  -s results/segmentation/binary/
+
+# Total variance — oracle expert annotations
+python tasks/segmentation/rejection_curves.py \
+  -c tasks/segmentation/configs/rejection_configs_lidc/tv_experts.json \
+  -s results/segmentation/binary/
+
+# Prediction variance baseline
+python tasks/segmentation/rejection_curves.py \
+  -c tasks/segmentation/configs/rejection_configs_lidc/prediction_variance.json \
   -s results/segmentation/binary/
 ```
 
-**Multiclass (RIGA):**
+**Multiclass rejection curves (RIGA):**
 ```bash
 python tasks/segmentation/rejection_curves_multiclass.py \
-  -c tasks/segmentation/configs/rejection_curve_multiclass.json \
+  -c tasks/segmentation/configs/rejection_curve_ens.json \
   -s results/segmentation/multiclass/
 ```
 
