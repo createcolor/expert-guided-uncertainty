@@ -54,6 +54,12 @@ def _make_loaders():
     return loader
 
 
+def _make_inference_loader():
+    """batch_size=1 matches production use: run_net stores data['name'][0] per iteration."""
+    ds = _SyntheticBloodyWell()
+    return DataLoader(ds, batch_size=1, shuffle=False)
+
+
 def _make_model_and_optimizer():
     net = mobilenet_v3_small()
     optimizer = optim.Adam(net.parameters(), lr=1e-3)
@@ -134,7 +140,7 @@ class TestClassificationTraining:
 class TestClassificationInference:
     def test_run_net_returns_dict_of_outputs(self):
         net, _, _ = _make_model_and_optimizer()
-        loader = _make_loaders()
+        loader = _make_inference_loader()
         device = torch.device("cpu")
 
         outputs = run_net(device, net, loader)
@@ -147,7 +153,7 @@ class TestClassificationInference:
 
     def test_run_net_with_true_labels_shapes(self):
         net, _, _ = _make_model_and_optimizer()
-        loader = _make_loaders()
+        loader = _make_inference_loader()
         device = torch.device("cpu")
 
         y_pred, y_true = run_net_with_true_lebels(device, net, loader, thr=0.5)
@@ -156,16 +162,18 @@ class TestClassificationInference:
         assert len(y_true) == N_SAMPLES
         assert all(p in (0, 1) for p in y_pred), "Predictions should be binary after thresholding"
 
-    def test_inference_output_changes_with_different_models(self):
-        """Two randomly-initialised models should (almost certainly) produce different outputs."""
-        loader = _make_loaders()
+    def test_inference_output_changes_when_weights_change(self):
+        """Zeroing all weights must change the outputs, proving run_net actually uses the model."""
+        net, _, _ = _make_model_and_optimizer()
+        loader = _make_inference_loader()
         device = torch.device("cpu")
 
-        net_a, _, _ = _make_model_and_optimizer()
-        net_b, _, _ = _make_model_and_optimizer()  # different random init
+        out_before = run_net(device, net, loader)
 
-        out_a = run_net(device, net_a, loader)
-        out_b = run_net(device, net_b, loader)
+        with torch.no_grad():
+            for p in net.parameters():
+                p.fill_(1.0)
 
-        # With random init, it's astronomically unlikely all outputs are identical
-        assert out_a != out_b
+        out_after = run_net(device, net, loader)
+
+        assert out_before != out_after
