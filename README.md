@@ -115,6 +115,16 @@ expert-guided-uncertainty/
     │   │   └── e1_cae/      # CAE predictions
     │   └── RIGA/
     │       └── e3/
+    ├── results/             # Precomputed rejection-curve data (used by figures/)
+    │   ├── segmentation/
+    │   │   └── rcs/
+    │   │       ├── e3_10k_microavg/   # RIGA per-method rejection curve JSONs
+    │   │       └── e1_lidc_10k_microavg/  # LIDC per-method rejection curve JSONs
+    │   ├── qa/
+    │   │   └── bert/
+    │   │       └── rejection_curves_data/  # PubMedQA per-method rejection curve JSONs
+    │   └── classification/
+    │       └── rejection_curves/      # BloodyWell per-method rejection curve JSONs
     ├── bert/                # BERT model checkpoints (QA)
     │   └── ensemble_final_decision_v2/
     └── markup/              # Additional markup files (experts, MCMC splits)
