@@ -13,7 +13,7 @@ from transformers import (
     Trainer,
     TrainingArguments,
 )
-from utils import get_gpu_stats  # pylint: disable=import-error
+from tasks.qa.bert.utils import get_gpu_stats
 
 
 def compute_metrics(eval_pred):
