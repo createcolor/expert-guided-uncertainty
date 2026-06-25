@@ -1,0 +1,51 @@
+{
+    "path2outputs_classifier": "data/bert/ens_preds_v2.pkl",
+
+    "test_markup": "data/test_ground_truth.json",
+
+    "path2outputs_epist": "data/bert/ens_preds_v2.pkl",
+    "path2outputs_aleat": "data/bert/exp_preds_v2.pkl",
+
+    "path2oracle_outputs": "data/results/mistral/mistral-difficulties.json",
+    "path2oracle_confidences": "data/results/mistral/mistral-confidences.json",
+
+    "dir2save_classifier_mistakes": "data/results/qa/bert",
+    "path2save_uncertainties": "data/results/qa/bert/uncertainty",
+    "path2save_rc_data": "data/results/qa/bert/rejection_curves_data",
+
+    "nets_num": 10,
+    "epistemic_nets_num": 10,
+    "aleatoric_nets_num": 10,
+    "sign_figs_num": 7,
+
+    "UE_methods": {
+        "CE_std": {},
+        "CE_p(1-p)": {},
+        "CE_entropy": {},
+        "TV_CE_p(1-p)_sum_CE_var": {},
+        "TV_pred_exps_p(1-p)_sum_CE_var": {},
+        "TV_gt_exps_p(1-p)_sum_CE_var": {},
+        "entropy_CE_sum_CE": {},
+        "gt_experts_all_p(1-p)": {},
+        "one_net": {},
+        "mcmc": {
+            "path2outputs": "data/results/qa/bert/mcmc"
+        },
+        "test_augmentations": {
+            "path2outputs": "data/bert/test_aug_preds.pkl"
+        },
+        "mc_dropout": {
+            "path2outputs": "data/bert/mc_dropout_preds.pkl"
+        },
+        "ddu": {
+            "path2densities": "data/bert/ddu_densities.pkl"
+        },
+        "huq": {
+            "path2densities": "data/bert/huq_densities.pkl"
+        },
+        "oracle": {},
+        "edl": {
+            "path2outputs": "data/bert/ens_preds_v2_edl.pkl"
+        }
+    }
+}

@@ -209,6 +209,82 @@ def calc_one_net(path2nets_outputs: Path, mistakes, path2save_uncerts: Path=None
             dump_json(uncert_dict, f"{path2save_uncerts}/one_net_{net_id}.json")
 
 
+def _softplus(z: np.ndarray) -> np.ndarray:
+    """Numerically stable softplus: log(1 + exp(z))."""
+    return np.log1p(np.exp(-np.abs(z))) + np.maximum(z, 0.0)
+
+
+def _shannon_entropy(p: np.ndarray) -> float:
+    p = np.clip(p, 1e-12, 1.0)
+    return float(-np.sum(p * np.log(p)))
+
+
+def calc_edl(path2edl_outputs: Path, mistakes: dict, path2save_uncerts: Path = None, sign_figs_num: int = 3):
+    '''
+    Compute three EDL uncertainty metrics from an ensemble of EDL models.
+
+    The pkl stores raw model logits (pre-Softplus). Softplus is applied here
+    to obtain non-negative evidence e_k = softplus(z_k), then Dirichlet
+    parameters α_k = e_k + 1 and strength S = Σ α_k ≥ K always.
+
+    Metrics saved (all keyed by the base ensemble's mistake arrays):
+      edl_vacuity.json    — u_pool = K / S_pool  ∈ (0, 1]
+      edl_entropy.json    — H(p̂_pool)            ≥ 0
+      edl_mutual_info.json — H(p̂_pool) − (1/M) Σ_m H(p̂_m)  ≥ 0
+
+    @param path2edl_outputs: pkl with format
+        {net_id: {pubid: {"gt": int, "pred": int, "probas": [z_0, z_1, z_2]}, ...}, ...}
+    @param mistakes: base-ensemble mistake dict {net_id: {pubid: bool}, ...}
+    '''
+    K = 3  # PubMedQA: no / maybe / yes
+
+    save_dir = Path(path2save_uncerts) / "edl"
+    mkdirs(save_dir)
+
+    edl_outputs = load_pickle(path2edl_outputs)
+    pubids = list(mistakes[0].keys())
+    net_ids_edl = list(edl_outputs.keys())
+    M = len(net_ids_edl)
+
+    vac_dict: dict = {}
+    ent_dict: dict = {}
+    mi_dict:  dict = {}
+
+    for pubid in pubids:
+        logits_per_net = np.array([edl_outputs[nid][pubid]["probas"] for nid in net_ids_edl])
+        alpha_per_net = _softplus(logits_per_net) + 1.0  # [M, K], each α ≥ 1
+
+        # Vacuity: pool by averaging per-net Dirichlet strengths
+        S_per_net = alpha_per_net.sum(axis=1)          # [M]
+        S_pool = float(S_per_net.mean())
+        vac = K / S_pool                               # ∈ (0, 1]
+
+        # Entropy of pooled Dirichlet mean
+        alpha_pool = alpha_per_net.mean(axis=0)        # [K]
+        p_hat_pool = alpha_pool / alpha_pool.sum()
+        ent = _shannon_entropy(p_hat_pool)
+
+        # Mutual info: H(p̂_pool) − mean_m H(p̂_m)
+        p_hat_per_net = alpha_per_net / alpha_per_net.sum(axis=1, keepdims=True)
+        mean_h = float(np.mean([_shannon_entropy(p_hat_per_net[m]) for m in range(M)]))
+        mi = max(ent - mean_h, 0.0)
+
+        mistake_row = [mistakes[net_id][pubid] for net_id in mistakes.keys()]
+
+        for unc_val, unc_dict in [(vac, vac_dict), (ent, ent_dict), (mi, mi_dict)]:
+            key = f'{unc_val:.{sign_figs_num}f}'
+            if key not in unc_dict:
+                unc_dict[key] = []
+            unc_dict[key].append(mistake_row)
+
+    if path2save_uncerts is not None:
+        dump_json(vac_dict, save_dir / "edl_vacuity.json")
+        dump_json(ent_dict, save_dir / "edl_entropy.json")
+        dump_json(mi_dict,  save_dir / "edl_mutual_info.json")
+
+    return vac_dict, ent_dict, mi_dict
+
+
 def calc_gt_experts_uncertainty(test_markup: Path, mistakes, path2save_uncerts: Path=None, sign_figs_num: int=3, mode: str="p(1-p)", expert: str="all"):
     '''
     @param path2save_uncerts: {"std": [[is_misclassified_by_net0: bool, is_misclassified_by_net1, ...], ...]}.
@@ -540,6 +616,9 @@ def calculate_uncertainties(config: dict, mistakes: dict):
             if f"gt_experts_{expert}_{mode}" in config["UE_methods"]:
                 calc_gt_experts_uncertainty(config["test_markup"], mistakes, dir2save / f"gt_experts_{expert}_{mode}.json", sign_figs_num, mode, expert)
 
+
+    if "edl" in config["UE_methods"]:
+        calc_edl(config["UE_methods"]["edl"]["path2outputs"], mistakes, dir2save, sign_figs_num)
 
     if "mcmc" in config["UE_methods"]:
         calc_mcmc(config["UE_methods"]["mcmc"]["path2outputs"], mistakes, dir2save, sign_figs_num)
