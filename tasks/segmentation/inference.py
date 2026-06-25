@@ -6,16 +6,16 @@ import torch
 import numpy as np
 from torch.utils.data import DataLoader
 
-from tasks.segmentation.utils.eval import evaluate_model  # pylint: disable=import-error
-from tasks.segmentation.utils.object_loader import get_architecture, get_dataset  # pylint: disable=import-error
-from tasks.segmentation.utils.metrics.dice import DiceScore, MulticlassDice  # pylint: disable=import-error
+from tasks.segmentation.seg_utils.eval import evaluate_model  # pylint: disable=import-error
+from tasks.segmentation.seg_utils.object_loader import get_architecture, get_dataset  # pylint: disable=import-error
+from tasks.segmentation.seg_utils.metrics.dice import DiceScore, MulticlassDice  # pylint: disable=import-error
 
 
 def parse_args():
     parser = argparse.ArgumentParser('Test a segmentator.')
 
     parser.add_argument('-c', '--config', type=Path,
-                        default=Path("configs/test_ensemble.json"),
+                        default=Path("tasks/segmentation/configs/test_config.json"),
                         help="Path to test config.")
 
     parsed_args = parser.parse_args()

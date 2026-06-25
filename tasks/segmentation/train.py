@@ -9,10 +9,10 @@ import torch.utils.data
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
 
-from tasks.segmentation.utils.train import train  # pylint: disable=import-error
-from tasks.segmentation.utils.object_loader import (get_architecture, get_dataset,  # pylint: disable=import-error
+from tasks.segmentation.seg_utils.train import train  # pylint: disable=import-error
+from tasks.segmentation.seg_utils.object_loader import (get_architecture, get_dataset,  # pylint: disable=import-error
                                  get_loss, get_optimizer, get_scheduler)
-from tasks.segmentation.utils.metrics.dice import DiceScore, MulticlassDice  # pylint: disable=import-error
+from tasks.segmentation.seg_utils.metrics.dice import DiceScore, MulticlassDice  # pylint: disable=import-error
 
 
 def parse_args():
@@ -20,7 +20,7 @@ def parse_args():
 
     parser.add_argument('-c', '--config', type=Path,
                         help="Path to train config .json file.",
-                        default="segmentation/configs/train_ensemble.json")
+                        default="tasks/segmentation/configs/train_ensemble.json")
 
     parsed_args = parser.parse_args()
     return parsed_args

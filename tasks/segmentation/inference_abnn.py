@@ -6,17 +6,17 @@ import torch
 import numpy as np
 from torch.utils.data import DataLoader
 
-from tasks.segmentation.utils.eval import evaluate_abnn  # pylint: disable=import-error
-from tasks.segmentation.utils.object_loader import get_dataset  # pylint: disable=import-error
+from tasks.segmentation.seg_utils.eval import evaluate_abnn  # pylint: disable=import-error
+from tasks.segmentation.seg_utils.object_loader import get_dataset  # pylint: disable=import-error
 from tasks.segmentation.models.UNet_ABNN import UNet_ABNN  # pylint: disable=import-error
-from tasks.segmentation.utils.metrics.dice import DiceScore, MulticlassDice  # pylint: disable=import-error
+from tasks.segmentation.seg_utils.metrics.dice import DiceScore, MulticlassDice  # pylint: disable=import-error
 
 
 def parse_args():
     parser = argparse.ArgumentParser('Test an ABNN segmentator.')
 
     parser.add_argument('-c', '--config', type=Path,
-                        default=Path("configs/test_abnn.json"),
+                        default=Path("tasks/segmentation/configs/test_abnn.json"),
                         help="Path to test config.")
 
     parsed_args = parser.parse_args()

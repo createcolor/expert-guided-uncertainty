@@ -9,11 +9,11 @@ import torch.utils.data
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
 
-from tasks.segmentation.utils.train import train  # pylint: disable=import-error
-from tasks.segmentation.utils.object_loader import get_dataset, get_optimizer, get_scheduler  # pylint: disable=import-error
+from tasks.segmentation.seg_utils.train import train  # pylint: disable=import-error
+from tasks.segmentation.seg_utils.object_loader import get_dataset, get_optimizer, get_scheduler  # pylint: disable=import-error
 from tasks.segmentation.models.UNet_ABNN import UNet_ABNN  # pylint: disable=import-error
-from tasks.segmentation.utils.metrics.map import BinaryABNNLoss, ABNNLoss  # pylint: disable=import-error
-from tasks.segmentation.utils.metrics.dice import DiceScore, MulticlassDice  # pylint: disable=import-error
+from tasks.segmentation.seg_utils.metrics.map import BinaryABNNLoss, ABNNLoss  # pylint: disable=import-error
+from tasks.segmentation.seg_utils.metrics.dice import DiceScore, MulticlassDice  # pylint: disable=import-error
 
 
 def parse_args():
@@ -21,7 +21,7 @@ def parse_args():
 
     parser.add_argument('-c', '--config', type=Path,
                         help="Path to train config .json file.",
-                        default="configs/train_abnn.json")
+                        default="tasks/segmentation/configs/train_abnn.json")
 
     parsed_args = parser.parse_args()
     return parsed_args

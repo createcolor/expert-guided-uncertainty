@@ -16,8 +16,8 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 
 from tasks.segmentation.models.UNet import UNet
-from tasks.segmentation.utils.train import train
-from tasks.segmentation.utils.metrics.dice import DiceScore, stacked_Dice
+from tasks.segmentation.seg_utils.train import train
+from tasks.segmentation.seg_utils.metrics.dice import DiceScore, stacked_Dice
 
 
 # ── Tiny synthetic dataloaders ────────────────────────────────────────────────

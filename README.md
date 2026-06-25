@@ -41,11 +41,11 @@ expert-guided-uncertainty/
 │   │   └── configs/
 │   ├── segmentation/          # LIDC-IDRI (binary) + RIGA (multiclass)
 │   │   ├── train.py           # Train UNet ensemble
-│   │   ├── inference.py       # Run segmentation inference
-│   │   ├── rejection_curves.py       # Binary: pixel-level rejection
-│   │   ├── rejection_curves_multiclass.py  # Multiclass: pixel-level rejection
+│   │   ├── inference.py       # Run segmentation inference → predictions.pt
+│   │   ├── uncertainty.py     # predictions.pt → per-pixel uncertainty map
+│   │   ├── rejection_curves.py  # Pixel-level rejection (binary + multiclass)
 │   │   ├── models/            # UNet, UNet_ABNN, BNL
-│   │   ├── utils/             # Dataset, eval, SGLD, uncertainty
+│   │   ├── seg_utils/         # Dataset, eval, SGLD, MCMC loader, metrics
 │   │   └── configs/
 │   └── qa/                    # PubMedQA question answering
 │       ├── bert/              # BERT fine-tuning (training from PMQA; baselines from nlp-2)
@@ -66,10 +66,15 @@ expert-guided-uncertainty/
 │       │   └── dataset.py
 │       └── rejection_curves.py  # Sample-level rejection for QA
 │
-├── uncertainty/               # Shared, task-agnostic modules
+├── common/                    # Task-agnostic core (numpy + torch backends)
+│   ├── backends.py            # One array interface over numpy and torch
+│   ├── estimators.py          # variance / bern_var / total variance / entropy
+│   └── rejection.py           # Rejection-curve driver (scoring via callback)
+│
+├── uncertainty/               # Shared modules (being migrated into common/)
 │   ├── metrics.py             # compute_aac(), compute_auroc() — used by all tasks
 │   ├── variance_uncertainty.py  # TV decomposition for image tasks
-│   ├── calculate_uncertainty.py # All QA uncertainty methods (ensemble, MCMC, DDU, HUQ, …)
+│   ├── calculate_uncertainty.py # QA uncertainty methods (ensemble, MCMC, DDU, HUQ, EDL, …)
 │   ├── utils.py
 │   └── baselines/             # DDU, HUQ, MCDropout wrappers for classification
 │
@@ -82,6 +87,8 @@ expert-guided-uncertainty/
 │   └── plot_expert_size.py
 │
 ├── tests/
+│   ├── test_common.py                        # backends, estimators, rejection driver
+│   ├── test_segmentation_rejection.py        # unified seg rejection pipeline
 │   ├── test_metrics.py                       # AAC, AUROC
 │   ├── test_variance_uncertainty.py          # TV decomposition
 │   ├── test_classification_rejection_curves.py
@@ -194,35 +201,37 @@ python tasks/segmentation/train.py -c tasks/segmentation/configs/train_ensemble_
 python tasks/segmentation/inference.py -c tasks/segmentation/configs/test_config.json
 ```
 
-**Compute pixel-level rejection curves (binary, LIDC-IDRI):**
-```bash
-# Total variance — base ensemble (epistemic only)
-python tasks/segmentation/rejection_curves.py \
-  -c tasks/segmentation/configs/rejection_configs_lidc/tv_base.json \
-  -s results/segmentation/binary/
+The pipeline is `inference → uncertainty → rejection_curves`. Inference saves
+`predictions.pt`; the uncertainty step turns those into a per-pixel uncertainty
+map; the rejection step consumes both. A single `rejection_curves.py` now
+handles both binary (LIDC-IDRI) and multiclass (RIGA) — binary is the
+single-foreground-class case of the same logic.
 
+**Compute the per-pixel uncertainty map:**
+```bash
+# Pick any rejection config (it specifies the prediction / expert sources)
+python tasks/segmentation/uncertainty.py \
+  -c tasks/segmentation/configs/rejection_configs_lidc/tv_cae.json \
+  -o results/segmentation/lidc/
+```
+
+**Build rejection curves from that map:**
+```bash
 # Total variance — CAE (epistemic + aleatoric)
 python tasks/segmentation/rejection_curves.py \
   -c tasks/segmentation/configs/rejection_configs_lidc/tv_cae.json \
-  -s results/segmentation/binary/
+  -u results/segmentation/lidc/uncertainty.pt \
+  -s results/segmentation/lidc/
 
-# Total variance — oracle expert annotations
-python tasks/segmentation/rejection_curves.py \
-  -c tasks/segmentation/configs/rejection_configs_lidc/tv_experts.json \
-  -s results/segmentation/binary/
-
-# Prediction variance baseline
-python tasks/segmentation/rejection_curves.py \
-  -c tasks/segmentation/configs/rejection_configs_lidc/prediction_variance.json \
-  -s results/segmentation/binary/
+# Other LIDC baselines (tv_base, tv_experts, prediction_variance) follow the
+# same two-step pattern with their respective configs.
+# Multiclass RIGA uses configs/rejection_curve_ens.json identically.
 ```
 
-**Multiclass rejection curves (RIGA):**
-```bash
-python tasks/segmentation/rejection_curves_multiclass.py \
-  -c tasks/segmentation/configs/rejection_curve_ens.json \
-  -s results/segmentation/multiclass/
-```
+> **Note on binary semantics:** the unified rejection script binarises the
+> single-channel prediction with `sigmoid >= 0.5` (matching the Dice metric used
+> at inference time). The previous binary script applied a softmax over the
+> spatial axis, which was inconsistent with how the model was evaluated.
 
 ### 3. QA — BERT (PubMedQA)
 
