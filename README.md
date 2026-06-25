@@ -14,7 +14,7 @@ We leverage **aggregated expert annotations** as a proxy for aleatoric uncertain
 
 **Key results across four medical tasks:**
 
-| Task | Dataset | Metric | Improvement over best baseline |
+| Task | Dataset | Metric | Improvement over baseline |
 |------|---------|--------|-------------------------------|
 | Image classification | BloodyWell | AAC ↓ | −57% (Total variance, CAE) |
 | Binary segmentation | LIDC-IDRI | AAC ↓ | −70% |
