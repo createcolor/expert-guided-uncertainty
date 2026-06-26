@@ -51,6 +51,53 @@ class TestToMembership:
 # ── End-to-end curve ──────────────────────────────────────────────────────────
 
 class TestRejectionPipeline:
+    def test_multiclass_uncertainty_shape(self, tmp_path):
+        M, S, C, H, W = 5, 2, 3, 4, 4
+        raw = torch.randn(M, S, C, H, W)              # multiclass: 5D, class axis present
+        preds_path = tmp_path / "predictions.pt"
+        torch.save(raw, preds_path)
+        uncertainty = compute_uncertainty(
+            {"models_predictions": str(preds_path), "models_ids": M, "models_method": "var"},
+            torch.device("cpu"),
+        )
+        assert uncertainty.shape == (M, S, H * W)
+
+    def test_binary_uncertainty_shape(self, tmp_path):
+        # Binary predictions have NO class axis: [members, samples, H, W] (4D).
+        # Regression guard: this must still yield [members, samples, pixels].
+        M, S, H, W = 5, 3, 4, 4
+        raw = torch.randn(M, S, H, W)
+        preds_path = tmp_path / "predictions.pt"
+        torch.save(raw, preds_path)
+        uncertainty = compute_uncertainty(
+            {"models_predictions": str(preds_path), "models_ids": M, "models_method": "var"},
+            torch.device("cpu"),
+        )
+        assert uncertainty.shape == (M, S, H * W)
+
+    def test_binary_end_to_end_curve(self, tmp_path):
+        # Full binary pipeline: predictions -> uncertainty -> rejection curve.
+        M, S, H, W = 4, 2, 4, 4
+        P = H * W
+        raw = torch.randn(M, S, H, W)
+        labels = torch.randint(0, 2, (S, P))
+        preds_path = tmp_path / "predictions.pt"
+        torch.save(raw, preds_path)
+
+        uncertainty = compute_uncertainty(
+            {"models_predictions": str(preds_path), "models_ids": M, "models_method": "var"},
+            torch.device("cpu"),
+        )
+        raw_flat = torch.reshape(raw, raw.shape[:-2] + (-1,))
+        pred_member, label_member, eval_classes = to_membership(raw_flat, labels)
+        assert eval_classes == [0]
+        order = torch.argsort(uncertainty, dim=-1)
+        mc = dice_member_curve(pred_member, label_member, 0)
+        rates = [0.0, 0.25, 0.5]
+        mean_dice, _ = sweep_members(order, P, mc, rates, member_axis=0)
+        assert mean_dice.shape == (len(rates),)
+        assert np.all((mean_dice >= 0.0) & (mean_dice <= 1.0))
+
     def test_curve_shape_and_range(self, tmp_path):
         M, S, C, H, W = 5, 2, 3, 4, 4
         raw = torch.randn(M, S, C, H, W)

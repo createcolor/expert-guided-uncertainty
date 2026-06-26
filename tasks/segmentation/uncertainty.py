@@ -32,15 +32,30 @@ def _as_ids(ids: int | list[int]) -> list[int]:
     return list(range(ids)) if isinstance(ids, int) else ids
 
 
+def _flatten_spatial(t: torch.Tensor) -> torch.Tensor:
+    """Flatten the trailing ``H, W`` axes into a single pixel axis."""
+    return torch.reshape(t, t.shape[:-2] + (-1,))
+
+
+def _to_probabilities(t: torch.Tensor) -> torch.Tensor:
+    """Map logits to probabilities by shape.
+
+    Binary predictions have no class axis (``[..., samples, pixels]``) and use a
+    sigmoid; multiclass predictions carry a class axis at dim 2
+    (``[..., samples, classes, pixels]``) and use a softmax over it. This matches
+    the activation the Dice metric applies at inference time.
+    """
+    return torch.sigmoid(t) if t.ndim == 3 else F.softmax(t, dim=2)
+
+
 def load_model_predictions(path: str | Path, model_ids: int | list[int],
                            device: torch.device) -> torch.Tensor:
-    """Load ensemble predictions and flatten the spatial dims.
+    """Load ensemble predictions, flatten spatial dims, map to probabilities.
 
-    Returns a tensor shaped ``[members, samples, classes, pixels]`` with softmax
-    applied over the class axis.
+    Returns ``[members, samples, pixels]`` for binary segmentation or
+    ``[members, samples, classes, pixels]`` for multiclass.
     """
-    preds = F.softmax(torch.load(path), dim=2).to(device)
-    preds = torch.reshape(preds, preds.shape[:-2] + (-1,))
+    preds = _to_probabilities(_flatten_spatial(torch.load(path).to(device)))
     return preds[_as_ids(model_ids)]
 
 
@@ -74,10 +89,9 @@ def expert_uncertainty(config: dict, n_classes: int, model_preds: torch.Tensor,
         return multiclass_total_variance(n_classes, epist_preds=None, aleat_preds=samples,
                                          epist_method=None, aleat_method="var")
 
-    expert_preds = torch.load(expert_path).to(device)[expert_ids]
+    expert_preds = _flatten_spatial(torch.load(expert_path).to(device)[expert_ids])
     if final_activation:
-        expert_preds = F.softmax(expert_preds, dim=2)
-    expert_preds = torch.flatten(expert_preds, start_dim=-2)
+        expert_preds = _to_probabilities(expert_preds)
 
     unc = multiclass_total_variance(n_classes, epist_preds=model_preds, aleat_preds=expert_preds,
                                     epist_method=config.get("models_method", None),
@@ -90,7 +104,8 @@ def compute_uncertainty(config: dict, device: torch.device,
     """Return the per-pixel uncertainty map shaped ``[members, samples, pixels]``."""
     model_preds = load_model_predictions(config["models_predictions"],
                                          config["models_ids"], device)
-    n_classes = model_preds.shape[-2]
+    # Binary predictions have no class axis (ndim 3); multiclass carries one at -2.
+    n_classes = 1 if model_preds.ndim == 3 else model_preds.shape[-2]
 
     if config.get("expert_predictions") is not None:
         return expert_uncertainty(config, n_classes, model_preds, device, final_activation)
@@ -108,7 +123,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("-o", "--output", type=Path, required=True,
                         help="Directory to write uncertainty.pt to.")
     parser.add_argument("-f", "--final_activation", action="store_true",
-                        help="Apply softmax to plain expert predictions before use.")
+                        help="Map plain expert predictions to probabilities "
+                             "(sigmoid for binary, softmax for multiclass) before use.")
     return parser.parse_args()
 
 
