@@ -25,7 +25,7 @@ import torch
 import torch.nn.functional as F
 
 from common.estimators import multiclass_total_variance
-from tasks.segmentation.seg_utils.uncertainty import load_mcmc
+from tasks.segmentation.seg_utils.load_mcmc import load_mcmc
 
 
 def _as_ids(ids: int | list[int]) -> list[int]:
