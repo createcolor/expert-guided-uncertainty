@@ -39,6 +39,7 @@ python tasks/segmentation/rejection_curves.py \
 | `dataset`            | rejection      | `"lidc"` or `"riga"` (selects the label loader). |
 | `data_path`          | rejection      | Path to the dataset (for ground-truth labels). |
 | `expert_id`          | rejection      | Which expert's annotation to score Dice against. |
+| `throwaway_rates`    | rejection      | Optional x-axis grid. Omit for 20 uniform bins; or an int `N` (N bins), a `{start, stop, num}` linspace, or an explicit list. `0.0` is always included. |
 
 ## Method variants (LIDC examples)
 

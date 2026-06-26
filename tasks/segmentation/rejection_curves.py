@@ -33,10 +33,35 @@ from common.rejection import sweep_members
 from tasks.segmentation.seg_utils.metrics.dice import stacked_Dice
 from tasks.segmentation.seg_utils.object_loader import flatten_labels
 
-# Dense throwaway grid near 0 (where the curve moves fastest), coarser afterwards.
-DEFAULT_THROWAWAY_RATES = np.concatenate(
-    (np.linspace(0.0001, 0.1, 1000), np.linspace(0.101, 1.0, 900))
-)
+
+def build_throwaway_rates(config: dict) -> list[float]:
+    """Build the throwaway-rate grid (x axis of the rejection curve) from config.
+
+    The ``throwaway_rates`` field may be:
+      - omitted              -> 20 uniform bins over [0, 1] (21 points);
+      - an int ``N``         -> ``N`` uniform bins over [0, 1] (N + 1 points);
+      - ``{start, stop, num}`` -> ``np.linspace(start, stop, num)``;
+      - an explicit list of rates.
+
+    ``0.0`` is always included; the result is clamped to [0, 1], sorted and
+    de-duplicated.
+    """
+    spec = config.get("throwaway_rates", 20)
+    if isinstance(spec, bool):
+        raise ValueError(f"Invalid throwaway_rates: {spec!r}")
+    if isinstance(spec, int):
+        rates = np.linspace(0.0, 1.0, spec + 1)
+    elif isinstance(spec, dict):
+        rates = np.linspace(spec["start"], spec["stop"], spec["num"])
+    elif isinstance(spec, (list, tuple)):
+        rates = np.asarray(spec, dtype=float)
+    else:
+        raise ValueError(f"Unsupported throwaway_rates spec: {spec!r}")
+
+    if rates.min() < 0.0 or rates.max() > 1.0:
+        raise ValueError("throwaway_rates must lie within [0, 1].")
+    rates = np.unique(np.concatenate(([0.0], rates)))   # ensure 0.0, sort, de-dup
+    return [float(r) for r in rates]
 
 
 def to_membership(predictions: torch.Tensor, labels: torch.Tensor
@@ -127,7 +152,7 @@ def main() -> None:
 
     # One ranking shared across classes -> sort once, reuse for each class curve.
     order = torch.argsort(uncertainty, dim=-1)
-    rates = [0.0] + list(DEFAULT_THROWAWAY_RATES)
+    rates = build_throwaway_rates(config)
 
     os.makedirs(args.save_path, exist_ok=True)
     print(f"Building rejection curves for classes {eval_classes}...")

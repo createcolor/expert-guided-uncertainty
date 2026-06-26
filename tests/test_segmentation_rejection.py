@@ -11,7 +11,9 @@ torch = pytest.importorskip("torch")
 
 from common.rejection import sweep_members
 from tasks.segmentation.uncertainty import compute_uncertainty
-from tasks.segmentation.rejection_curves import to_membership, dice_member_curve
+from tasks.segmentation.rejection_curves import (
+    to_membership, dice_member_curve, build_throwaway_rates,
+)
 
 
 # ── Membership reduction ──────────────────────────────────────────────────────
@@ -53,6 +55,36 @@ class TestToMembership:
         labels = torch.randint(0, 2, (2, 1, 16))   # singleton channel axis
         _, label_member, _ = to_membership(preds, labels)
         assert label_member.shape == (2, 1, 16)    # [samples, class=1, pixels]
+
+
+# ── Throwaway-rate grid ───────────────────────────────────────────────────────
+
+class TestThrowawayRates:
+    def test_default_is_20_uniform_bins(self):
+        rates = build_throwaway_rates({})
+        assert len(rates) == 21
+        assert rates[0] == 0.0 and rates[-1] == 1.0
+        np.testing.assert_allclose(rates, np.linspace(0.0, 1.0, 21))
+
+    def test_int_spec_sets_bin_count(self):
+        rates = build_throwaway_rates({"throwaway_rates": 4})
+        np.testing.assert_allclose(rates, [0.0, 0.25, 0.5, 0.75, 1.0])
+
+    def test_dict_spec_is_linspace(self):
+        rates = build_throwaway_rates({"throwaway_rates": {"start": 0.0, "stop": 0.5, "num": 3}})
+        np.testing.assert_allclose(rates, [0.0, 0.25, 0.5])
+
+    def test_list_spec_gets_zero_prepended_sorted_deduped(self):
+        rates = build_throwaway_rates({"throwaway_rates": [0.5, 0.2, 0.2, 0.8]})
+        np.testing.assert_allclose(rates, [0.0, 0.2, 0.5, 0.8])
+
+    def test_out_of_range_raises(self):
+        with pytest.raises(ValueError):
+            build_throwaway_rates({"throwaway_rates": [0.5, 1.5]})
+
+    def test_bool_rejected(self):
+        with pytest.raises(ValueError):
+            build_throwaway_rates({"throwaway_rates": True})
 
 
 # ── End-to-end curve ──────────────────────────────────────────────────────────
