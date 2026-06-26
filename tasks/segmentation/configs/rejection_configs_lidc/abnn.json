@@ -1,0 +1,13 @@
+{
+    "models_predictions": "data/predictions/LIDC/e1/predictions.pt",
+    "expert_predictions": "data/predictions/LIDC/abnn/predictions.pt",
+    "expert_method": "abnn",
+
+    "models_ids": 10,
+    "expert_ids": 10,
+    "models_method": "var",
+
+    "dataset": "lidc",
+    "data_path": "data/LIDC/test_data.pickle",
+    "expert_id": 1
+}

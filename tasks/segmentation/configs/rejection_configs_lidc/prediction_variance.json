@@ -1,12 +1,7 @@
 {
     "models_predictions": "data/predictions/LIDC/e1/predictions.pt",
-    "expert_predictions": "data/predictions/LIDC/e1/predictions.pt",
-
     "models_ids": 10,
-    "expert_ids": 10,
-
     "models_method": "var",
-    "expert_method": "none",
 
     "dataset": "lidc",
     "data_path": "data/LIDC/test_data.pickle",
