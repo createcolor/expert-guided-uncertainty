@@ -47,6 +47,13 @@ class TestToMembership:
         assert pred_member.shape == (4, 2, 1, 16)
         assert eval_classes == [0]
 
+    def test_singleton_channel_labels_are_squeezed(self):
+        # LIDC labels arrive as [samples, 1, pixels]; must reduce to [S, 1, P] membership.
+        preds = torch.randn(4, 2, 1, 16)
+        labels = torch.randint(0, 2, (2, 1, 16))   # singleton channel axis
+        _, label_member, _ = to_membership(preds, labels)
+        assert label_member.shape == (2, 1, 16)    # [samples, class=1, pixels]
+
 
 # ── End-to-end curve ──────────────────────────────────────────────────────────
 
@@ -80,7 +87,7 @@ class TestRejectionPipeline:
         M, S, H, W = 4, 2, 4, 4
         P = H * W
         raw = torch.randn(M, S, H, W)
-        labels = torch.randint(0, 2, (S, P))
+        labels = torch.randint(0, 2, (S, 1, P))   # LIDC-style singleton channel axis
         preds_path = tmp_path / "predictions.pt"
         torch.save(raw, preds_path)
 

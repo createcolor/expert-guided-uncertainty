@@ -54,6 +54,11 @@ def to_membership(predictions: torch.Tensor, labels: torch.Tensor
         and the list of class indices to evaluate (background skipped for
         multiclass).
     """
+    # flatten_labels can carry a singleton channel axis (LIDC labels are stored as
+    # [1, H, W], giving [samples, 1, pixels]); drop it to a clean [samples, pixels] map.
+    if labels.ndim == 3 and labels.shape[1] == 1:
+        labels = labels[:, 0]
+
     if predictions.ndim == 3:                      # [members, samples, pixels] -> add class axis
         predictions = predictions.unsqueeze(2)
     n_classes = predictions.shape[2]
