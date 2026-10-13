@@ -25,13 +25,20 @@
                 "MCMC": "mcmc",
                 "Total variance, experts": "TV_gt_exps_p(1-p)_sum_CE_var"
             },
-            "expected_aac_source": "uncertainty-nlp-2: uncertainty_estimation/results/bloodywell/rejection_curves/*.json",
+            "expected_aac_source": "TV_CE / TV_gt_exps / mcmc: uncertainty-nlp-2 results/bloodywell/rejection_curves/*.json (TV_CE, TV_gt_exps also reproduced from uncertainty-nlp results/bloodywell/unc_*.json + MobileNet_small_10_10_80_meta_8_misclass.json). CAE: uncertainty-nlp results/bloodywell/unc_TV_pred_exps_p(1-p)_sum_CE_var.json, which reproduces Table 1 (2.18); the saved CAE curve in uncertainty-nlp-2 (2.22) is from another run.",
             "expected_aac": {
-                "TV_pred_exps_p(1-p)_sum_CE_var": 0.0028144603543534116,
-                "TV_CE_p(1-p)_sum_CE_var": 0.004874970000203856,
-                "mcmc": 0.005448507364986457,
-                "TV_gt_exps_p(1-p)_sum_CE_var": 0.0029588208369442405
-            }
+                "TV_pred_exps_p(1-p)_sum_CE_var": 0.0021812502774329603,
+                "TV_CE_p(1-p)_sum_CE_var": 0.004281118648852504,
+                "mcmc": 0.004854656013635105,
+                "TV_gt_exps_p(1-p)_sum_CE_var": 0.0023649694855928886
+            },
+            "paper_aac": {
+                "TV_pred_exps_p(1-p)_sum_CE_var": 0.00218,
+                "TV_CE_p(1-p)_sum_CE_var": 0.00428,
+                "mcmc": 0.00486,
+                "TV_gt_exps_p(1-p)_sum_CE_var": 0.00237
+            },
+            "paper_aac_source": "new_paper.pdf, Table 1 (classification, QA) / Table 2 (segmentation), x1e-3, 2 decimals"
         },
         {
             "name": "LIDC-IDRI",
@@ -50,7 +57,14 @@
                 "tv_base": 0.0026288664418702814,
                 "mcmc": 0.003961958755859063,
                 "tv_experts": 0.0013838415616751255
-            }
+            },
+            "paper_aac": {
+                "tv_cae": 0.00244,
+                "tv_base": 0.00263,
+                "mcmc": 0.00396,
+                "tv_experts": 0.00138
+            },
+            "paper_aac_source": "new_paper.pdf, Table 1 (classification, QA) / Table 2 (segmentation), x1e-3, 2 decimals"
         },
         {
             "name": "RIGA",
@@ -69,7 +83,14 @@
                 "tv_base": 0.012532639247774546,
                 "mcmc": 0.027122565222382454,
                 "tv_experts": 0.0062689966285121804
-            }
+            },
+            "paper_aac": {
+                "tv_cae": 0.00645,
+                "tv_base": 0.01254,
+                "mcmc": 0.02712,
+                "tv_experts": 0.00627
+            },
+            "paper_aac_source": "new_paper.pdf, Table 1 (classification, QA) / Table 2 (segmentation), x1e-3, 2 decimals"
         },
         {
             "name": "PubMedQA",
@@ -78,16 +99,22 @@
             "methods": {
                 "Total variance, CAE (ours)": "TV_pred_exps_p(1-p)_sum_CE_var",
                 "Total variance, base": "TV_CE_p(1-p)_sum_CE_var",
-                "MCMC": "mcmc",
                 "Total variance, experts": "TV_gt_exps_p(1-p)_sum_CE_var"
             },
             "expected_aac_source": "uncertainty-nlp-2: uncertainty_estimation/results/bert_v2/rejection_curves_data/*.json",
             "expected_aac": {
-                "TV_pred_exps_p(1-p)_sum_CE_var": 0.14238227641122117,
-                "TV_CE_p(1-p)_sum_CE_var": 0.15185383464868185,
-                "mcmc": 0.1733276550640101,
-                "TV_gt_exps_p(1-p)_sum_CE_var": 0.1076426079457705
-            }
+                "TV_pred_exps_p(1-p)_sum_CE_var": 0.10085257641122117,
+                "TV_CE_p(1-p)_sum_CE_var": 0.11032413464868185,
+                "TV_gt_exps_p(1-p)_sum_CE_var": 0.06611290794577049
+            },
+            "methods_note": "MCMC is not reported for PubMedQA in the paper (Table 1).",
+            "paper_aac": {
+                "TV_pred_exps_p(1-p)_sum_CE_var": 0.10085,
+                "TV_CE_p(1-p)_sum_CE_var": 0.11032,
+                "TV_gt_exps_p(1-p)_sum_CE_var": 0.06611
+            },
+            "paper_aac_source": "new_paper.pdf, Table 1 (classification, QA) / Table 2 (segmentation), x1e-3, 2 decimals"
         }
-    ]
+    ],
+    "paper_atol": 1e-05
 }

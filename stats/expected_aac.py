@@ -8,7 +8,8 @@ changing the statistics.
 Sources:
   - item-level (PubMedQA, BloodyWell): ``rejection_curves_data/<method>.json`` written by
     the old ``plot_rejection_curves.get_rc_data`` (``{rate: [mean_acc, std]}``);
-    AAC = integral of ``1 - accuracy`` over ``[0, r_max]``.
+    AAC = area between the oracle and the curve over ``[0, r_max]`` (paper eq. 5); the
+    oracle uses the ensemble's mean error, read from the curve's value at rate 0.
   - image-level (LIDC-IDRI, RIGA): ``rcs/<run>/<method>/dice_scores.npy`` (per-net curves);
     AAC = mean over nets of ``area(oracle) - area(method)`` over ``[0, r_max]``,
     as in the old ``aac_std.py``.
@@ -28,7 +29,7 @@ from pathlib import Path
 
 import numpy as np
 
-from stats.sample_curves import area_above_curve
+from stats.sample_curves import area_above_curve, oracle_curve
 from stats.segmentation_curves import old_throwaway_rates, area_under_curves
 
 
@@ -38,7 +39,9 @@ def item_level_aac(rc_dir: Path, method: str, r_max: float = 0.8) -> float:
     grid = np.array([float(rate) for rate in curve])
     values = np.array([float(v[0]) if isinstance(v, list) else float(v) for v in curve.values()])
     order = np.argsort(grid)
-    return float(area_above_curve(values[order], grid[order], r_max)[0])
+    grid, values = grid[order], values[order]
+    oracle = oracle_curve(1.0 - values[0], grid)
+    return float(area_above_curve(values, grid, r_max)[0] - area_above_curve(oracle, grid, r_max)[0])
 
 
 def image_level_aac(rcs_dir: Path, method: str, oracle: str | None, rates: np.ndarray,

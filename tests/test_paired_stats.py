@@ -10,7 +10,7 @@ import numpy as np
 import pytest
 
 from stats.paired_stats import bootstrap_method_stats, paired_difference, holm, wilcoxon_p
-from stats.sample_curves import make_grid, net_curves, area_above_curve, method_aac
+from stats.sample_curves import make_grid, net_curves, area_above_curve, method_aac, oracle_curve
 from stats.segmentation_curves import (
     old_throwaway_rates, old_keep_counts, per_image_dice_curves, area_under_curves,
 )
@@ -127,12 +127,17 @@ class TestItemLevelCurves:
         new = net_curves(per_net, wrong, grid).mean(axis=0)
         np.testing.assert_allclose(new, old, atol=1e-12)
 
-    def test_aac_is_mean_of_per_net_aac(self):
+    def test_aac_is_area_between_oracle_and_mean_curve(self):
         unc, wrong = self._data(5)
         grid = make_grid(self.N_BINS)
         curves = net_curves(unc, wrong, grid)
+        oracle = oracle_curve(wrong.mean(), grid)
         assert method_aac(unc, wrong, grid) == pytest.approx(
-            area_above_curve(curves.mean(axis=0), grid)[0])
+            area_above_curve(curves.mean(axis=0), grid)[0] - area_above_curve(oracle, grid)[0])
+
+    def test_oracle_ranking_has_zero_aac(self):
+        wrong = np.array([[True] * 10 + [False] * 90])
+        assert method_aac(wrong[0].astype(float), wrong, make_grid(100)) == pytest.approx(0, abs=1e-15)
 
     def test_perfect_ranking_beats_reversed_ranking(self):
         wrong = np.array([[True] * 10 + [False] * 90])

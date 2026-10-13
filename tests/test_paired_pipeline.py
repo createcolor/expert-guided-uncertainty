@@ -16,7 +16,7 @@ import pytest
 
 from stats.data import ItemLevelData, ImageLevelData
 from stats.expected_aac import item_level_aac, image_level_aac
-from stats.run_paired_tests import run, ReproductionError
+from stats.run_paired_tests import run, ReproductionError, compare_with_paper
 from stats.sample_curves import make_grid, net_curves, method_aac
 from stats.segmentation_curves import old_throwaway_rates
 from tests.test_paired_stats import _old_get_rc_info_averaging_mode, _to_old_format
@@ -128,3 +128,10 @@ class TestRunPairedTests:
         del config["datasets"][0]["methods"]["Per-net"]
         results = run(config)
         assert ("items", "Per-net") not in [(r.dataset, r.other) for r in results]
+
+
+def test_paper_comparison_reports_only_larger_differences():
+    dataset = {"name": "d", "paper_aac": {"a": 2.18e-3, "b": 2.37e-3}}
+    observed = {"A": 2.1813e-3, "B": 2.3550e-3}
+    off = compare_with_paper(dataset, {"A": "a", "B": "b"}, observed, atol=1e-5)
+    assert len(off) == 1 and off[0].startswith("B:")

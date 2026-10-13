@@ -8,8 +8,10 @@ a mean over images, a Wilcoxon signed-rank test on per-image Delta AAC is
 reported as well. p-values are Holm-corrected over all comparisons in the run.
 
 Before testing, each dataset's full-test-set AAC is checked against its
-``expected_aac`` (the paper's values, see ``stats.expected_aac``); a mismatch
-raises ``ReproductionError`` and nothing is reported.
+``expected_aac`` (the AACs of the original runs, see ``stats.expected_aac``); a
+mismatch raises ``ReproductionError`` and nothing is reported. It is then
+compared with ``paper_aac`` (the paper's tables, rounded); differences are
+printed as warnings.
 
 Usage:
     python -m stats.run_paired_tests -c stats/configs/paired_tests.json -o results/paired_tests
@@ -40,7 +42,8 @@ def _available(dataset: dict, labels: list[str], stored: set[str]) -> dict[str, 
         if name is None:
             print(f"  [{dataset['name']}] no method mapped for '{label}', skipping it.")
         elif name not in stored:
-            raise KeyError(f"[{dataset['name']}] '{name}' is not in {dataset['data']}.")
+            print(f"  [{dataset['name']}] WARNING: '{name}' ({label}) is not in {dataset['data']}, "
+                  "skipping it.")
         else:
             found[label] = name
     return found
@@ -75,6 +78,25 @@ def check_reproduction(dataset: dict, methods: dict[str, str], observed: dict[st
     if failures:
         raise ReproductionError(f"[{dataset['name']}] collected data does not reproduce the "
                                 "saved run:\n  " + "\n  ".join(failures))
+
+
+def compare_with_paper(dataset: dict, methods: dict[str, str], observed: dict[str, float],
+                       atol: float) -> list[str]:
+    """Compare full-test-set AAC with the values printed in the paper (``paper_aac``).
+
+    The paper rounds to two decimals (x1e-3), so this is a looser, informative
+    check: differences above ``atol`` are reported, not raised. Returns them.
+    """
+    printed = dataset.get("paper_aac") or {}
+    off = []
+    for label, name in methods.items():
+        if name in printed and abs(observed[label] - printed[name]) > atol:
+            off.append(f"{label}: {observed[label] * 1e3:.4f} vs paper {printed[name] * 1e3:.2f} (x1e-3)")
+    for line in off:
+        print(f"  [{dataset['name']}] WARNING, differs from the paper's table: {line}")
+    if printed and not off:
+        print(f"  [{dataset['name']}] all AACs agree with the paper's table (within {atol:.0e}).")
+    return off
 
 
 def item_level(dataset: dict, labels: list[str], config: dict):
@@ -120,7 +142,9 @@ def run(config: dict) -> list[PairedResult]:
         stat, n_units, per_unit, methods = builder(dataset, [ours, *comparators], config)
 
         print(f"{dataset['name']}: checking reproduction of the saved run...")
-        check_reproduction(dataset, methods, stat(np.arange(n_units)), rtol, atol)
+        full = stat(np.arange(n_units))
+        check_reproduction(dataset, methods, full, rtol, atol)
+        compare_with_paper(dataset, methods, full, config.get("paper_atol", 1e-5))
 
         print(f"{dataset['name']}: bootstrapping ({config.get('n_boot', 10_000)} resamples)...")
         observed, boot = bootstrap_method_stats(stat, n_units, config.get("n_boot", 10_000),

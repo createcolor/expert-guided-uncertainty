@@ -112,16 +112,20 @@ def validate(method: str, uncertainty: np.ndarray, wrong: np.ndarray, rc_path: P
 
 def collect(test_markup: dict, misclass: dict, uncertainty_dir: Path, methods: list[str],
             n_nets: int = 10, validate_dir: Path | None = None,
-            round_digits: dict[str, int] | None = None) -> ItemLevelData:
+            round_digits: dict[str, int] | None = None,
+            skip_validate: set[str] | None = None) -> ItemLevelData:
     wells = list(test_markup)
     round_digits = round_digits or {}
+    skip_validate = skip_validate or set()
     data = ItemLevelData(item_ids=np.array(wells), wrong=wrong_matrix(misclass, wells, n_nets))
     for method in methods:
         files = method_files(uncertainty_dir, method, n_nets)
         rankings = [ranking_from_file(_load(path), wells, path, round_digits.get(method))
                     for path in files]
         data.uncertainty[method] = rankings[0] if len(rankings) == 1 else np.stack(rankings)
-        if validate_dir is not None:
+        if validate_dir is not None and method in skip_validate:
+            print(f"  {method}: not validated against a saved curve (--skip-validate)")
+        elif validate_dir is not None:
             validate(method, data.uncertainty[method], data.wrong, validate_dir / f"{method}.json")
     return data
 
@@ -143,6 +147,9 @@ def parse_args() -> argparse.Namespace:
                              "default: full precision.")
     parser.add_argument("--validate-dir", type=Path, default=None,
                         help="Saved rejection_curves dir of the original run (<method>.json).")
+    parser.add_argument("--skip-validate", nargs="*", default=[], metavar="METHOD",
+                        help="Methods whose saved curve is not from the paper's run (BloodyWell CAE); "
+                             "run_paired_tests still checks their AAC against expected_aac.")
     parser.add_argument("--out", type=Path, required=True, help="Output .npz file.")
     return parser.parse_args()
 
@@ -154,7 +161,7 @@ def main() -> None:
                 else misclass_from_outputs(_load(args.outputs), test_markup))
     round_digits = {m: int(n) for m, n in (item.rsplit("=", 1) for item in args.round_digits)}
     data = collect(test_markup, misclass, args.uncertainty_dir, args.methods, args.n_nets,
-                   args.validate_dir, round_digits)
+                   args.validate_dir, round_digits, set(args.skip_validate))
     data.save(args.out)
     print(f"Saved {len(data.item_ids)} wells x {data.wrong.shape[0]} nets, "
           f"{len(data.uncertainty)} method(s) to {args.out}")

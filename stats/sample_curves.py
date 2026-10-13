@@ -77,7 +77,7 @@ def net_curves(uncertainty: np.ndarray, wrong: np.ndarray, grid: np.ndarray) -> 
 
 
 def area_above_curve(curves: np.ndarray, grid: np.ndarray, r_max: float = 0.8) -> np.ndarray:
-    """AAC = integral of ``1 - accuracy`` over ``[0, r_max]``, per curve."""
+    """Integral of ``1 - accuracy`` over ``[0, r_max]``, per curve (AAC without the oracle term)."""
     curves = np.atleast_2d(curves)
     mask = grid <= r_max
     x = np.append(grid[mask], r_max)
@@ -86,7 +86,23 @@ def area_above_curve(curves: np.ndarray, grid: np.ndarray, r_max: float = 0.8) -
     return _trapezoid(1.0 - y, x, axis=1)
 
 
+def oracle_curve(error: float, grid: np.ndarray) -> np.ndarray:
+    """Best possible curve for a model with error rate ``error``: mistakes are rejected first.
+
+    On the old grid this is the line from ``(0, 1 - error)`` to ``(error, 1)``,
+    then 1 -- what the old interpolation gives when all mistakes form one group.
+    """
+    return np.interp(grid, [0.0, error, 1.0], [1.0 - error, 1.0, 1.0])
+
+
 def method_aac(uncertainty: np.ndarray, wrong: np.ndarray, grid: np.ndarray,
                r_max: float = 0.8) -> float:
-    """AAC of the net-averaged curve (equal to the mean of per-net AACs)."""
-    return float(area_above_curve(net_curves(uncertainty, wrong, grid), grid, r_max).mean())
+    """AAC as in the paper (eq. 5): area between the oracle and the net-averaged curve on ``[0, r_max]``.
+
+    The oracle is that of a model with the ensemble's mean error rate; this
+    reproduces Table 1 (PubMedQA and BloodyWell). The oracle term is the same for
+    every method on a given set of items, so it does not affect differences.
+    """
+    curve = net_curves(uncertainty, wrong, grid).mean(axis=0)
+    oracle = oracle_curve(float(np.mean(wrong)), grid)
+    return float(area_above_curve(curve, grid, r_max)[0] - area_above_curve(oracle, grid, r_max)[0])

@@ -203,3 +203,10 @@ def test_misclass_from_outputs_uses_threshold_half():
     markup = {"a": {"gt_result": 1}, "b": {"gt_result": 0}, "c": {"gt_result": 1}}
     outputs = {"0": {"a": "0.5", "b": "0.5", "c": "0.49"}}
     assert misclass_from_outputs(outputs, markup) == {"0": ["b", "c"]}
+
+
+def test_skip_validate(old_run):
+    markup, misclass, unc_dir, rc_dir = old_run
+    data = collect(markup, misclass, unc_dir, ["tv"], N_NETS, validate_dir=rc_dir,
+                   skip_validate={"tv"})                     # would fail validation at full precision
+    assert data.uncertainty["tv"].shape == (150,)
