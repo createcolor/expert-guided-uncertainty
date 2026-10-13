@@ -16,8 +16,12 @@ method, *Total variance, CAE*, with three references: *Total variance, base*
 For each comparison:
 
 - **ΔAAC = AAC(ours) − AAC(other)** on the full test set (negative = ours better).
-  AAC is computed exactly as for the paper: on the base ensemble's rejection
-  curves averaged over its nets, over throwaway rates `[0, 0.8]`.
+  AAC is computed exactly as for the paper (eq. 5): the area between the oracle
+  curve and the base ensemble's rejection curve averaged over its nets, over
+  throwaway rates `[0, 0.8]`. For PubMedQA / BloodyWell the oracle is that of a
+  model with the ensemble's mean error rate; for segmentation it is the saved
+  oracle run. The oracle term is the same for all methods on a resample, so it
+  does not change ΔAAC.
 - **95% CI and p-value from a paired bootstrap over test items.** Items are
   resampled with replacement and *both* methods' AAC are recomputed on the same
   resample. The p-value tests ΔAAC = 0 with the centred bootstrap distribution.
@@ -37,19 +41,23 @@ this repo; outputs go to `results/paired_tests/` (git-ignored).
 python -m stats.collect_ue_items --old-repo <uncertainty-nlp-2> \
   --config <uncertainty-nlp-2>/uncertainty_estimation/config_UE.json \
   --methods "TV_pred_exps_p(1-p)_sum_CE_var" "TV_CE_p(1-p)_sum_CE_var" \
-            "TV_gt_exps_p(1-p)_sum_CE_var" mcmc \
+            "TV_gt_exps_p(1-p)_sum_CE_var" \
   --validate-dir <uncertainty-nlp-2>/uncertainty_estimation/results/bert_v2/uncertainty \
   --out results/paired_tests/pmqa_items.npz
 
 # BloodyWell: saved per-well uncertainties + the base nets' mistakes (no recomputation).
 # --misclass is <nets>_misclass.json from the classification inference.py; or pass
 # --outputs <nets>_<ep>ep_outputs.json to rebuild the mistakes from the outputs.
+# The saved CAE curve is from another run (see notes), so CAE is not validated
+# against it; run_paired_tests checks its AAC against the paper's 2.18 instead.
+# Add mcmc to --methods once the per-net MCMC files are found (see notes).
 python -m stats.collect_bloodywell \
   --test-markup tasks/classification/markup/BloodyWell/test_dataset_10_10_80.json \
   --misclass /alpha/korchagin/projects/expressto/nn/outputs/MobileNet_small_10_10_80_meta_8_misclass.json \
   --uncertainty-dir <uncertainty-nlp>/uncertainty_estimation/results/bloodywell \
   --methods "TV_pred_exps_p(1-p)_sum_CE_var" "TV_CE_p(1-p)_sum_CE_var" \
-            "TV_gt_exps_p(1-p)_sum_CE_var" mcmc \
+            "TV_gt_exps_p(1-p)_sum_CE_var" \
+  --skip-validate "TV_pred_exps_p(1-p)_sum_CE_var" \
   --validate-dir <uncertainty-nlp-2>/uncertainty_estimation/results/bloodywell/rejection_curves \
   --out results/paired_tests/bloodywell_items.npz
 
@@ -78,21 +86,27 @@ python -m stats.run_paired_tests -c stats/configs/paired_tests.json -o results/p
    original runs, computed from their saved curves by `stats.expected_aac`
    (sources are noted next to each). Before any test is run, the full-test-set
    AAC of every method must match within `reproduction_rtol` / `reproduction_atol`;
-   otherwise the run stops with `ReproductionError`.
+   otherwise the run stops with `ReproductionError`. The AACs are then compared
+   with `paper_aac`, the values printed in the paper's Tables 1 and 2; a
+   difference above `paper_atol` (one unit in the last printed digit) is
+   reported as a warning.
 3. **Unit tests** (`tests/test_paired_stats.py`, `tests/test_paired_pipeline.py`)
    check that the fast curve engines match verbatim copies of the old functions.
    They also check that the expected-AAC path (saved artifacts) and the observed
    path (collected data) agree, and that the runner refuses to report on a
    mismatch.
 
-Expected AAC (×10⁻³) recorded in the config:
+Expected AAC (×10⁻³) recorded in the config, with the paper's value in brackets
+where it differs in the second decimal (all within one unit of that digit):
 
 | Dataset | CAE (ours) | TV base | MCMC | TV experts |
 |---|---:|---:|---:|---:|
-| BloodyWell | 2.81 | 4.87 | 5.45 | 2.96 |
+| BloodyWell | 2.18 | 4.28 | 4.85 (4.86) | 2.36 (2.37) |
 | LIDC-IDRI | 2.44 | 2.63 | 3.96 | 1.38 |
-| RIGA | 6.45 | 12.53 | 27.12 | 6.27 |
-| PubMedQA | 142.38 | 151.85 | 173.33 | 107.64 |
+| RIGA | 6.45 | 12.53 (12.54) | 27.12 | 6.27 |
+| PubMedQA | 100.85 | 110.32 | — | 66.11 |
+
+PubMedQA and BloodyWell (except MCMC) were reproduced locally from collected data.
 
 ## Notes on the old pipelines
 
@@ -108,22 +122,23 @@ Expected AAC (×10⁻³) recorded in the config:
   already identify every well, so `collect_bloodywell` only reads them. The
   saved curves for `TV_CE`, `TV_gt_exps` and `CE` reproduce exactly with ties at
   full precision (the default); `experts_p(1-p)` needs `--round-digits
-  "experts_p(1-p)=10"`. The local `unc_TV_pred_exps` (CAE) does **not**
-  reproduce the saved CAE curve (AAC 2.775 vs 2.814 ×10⁻³) at any precision: it
-  comes from a different CAE run. `TV_gt_exps = 0.5·CE² + 0.5·experts_p(1-p)`
-  exactly, so the CAE file should equal `0.5·CE² + 0.5·aleat_CAE`. Per-net methods (MCMC) need `unc_<method>/*_<net>.json`
+  "experts_p(1-p)=10"`. **CAE:** the saved CAE curve in `uncertainty-nlp-2`
+  (AAC 2.22) is from a different run than the paper's. The CAE file
+  `uncertainty-nlp/.../results/bloodywell/unc_TV_pred_exps_p(1-p)_sum_CE_var.json`
+  gives 2.18, the paper's Table 1 value. A second copy on the server
+  (`/alpha/projects/expressto/results/uncertainty/`) differs by ≤ 1.2e-4 per
+  well and also rounds to 2.18. The paper's BloodyWell ± values are larger than
+  the per-net std for every method (e.g. 0.33 vs 0.30 for CAE); PubMedQA's match.
+  `stats.scan_bloodywell_candidates` ranks candidate files against a saved
+  curve. Per-net methods (MCMC) need `unc_<method>/*_<net>.json`
   for nets 0..9. The local `unc_mcmc/` holds `mcmc_400 … mcmc_685` instead, so
   the per-net MCMC files used for the paper (`results/mcmc_scores/mcmc_<net>.json`
   in `rejection_curves_args.json`) have to be found on the server.
 - **Precision per method.** The original PubMedQA run used `sign_figs_num=20`
   for the TV methods but 3 for MCMC (more ties). With `--validate-dir` the
   precision is read from the saved files; without it, pass `--sign-figs mcmc=3`.
-- **PubMedQA MCMC** is MCMC over the linear-probing heads
-  (`results/linear_probing_mcmc`), and the current `config_UE.json` has no `mcmc`
-  entry. Add
-  `"mcmc": {"path2outputs": "uncertainty_estimation/results/linear_probing_mcmc", "single_net_file_name_template": "mcmc"}`
-  to `UE_methods`, or drop MCMC from the PubMedQA dataset in
-  `paired_tests.json` if it should not be a comparator there.
+- **PubMedQA MCMC** is not reported in the paper (Table 1 shows "–"), so it is
+  not a PubMedQA comparator. (The saved run's MCMC was over linear-probing heads.)
 - **Segmentation** reuses the old `utils` package and copies each script's
   uncertainty dispatch verbatim. Per-method `final_activation` mirrors the `-f`
   flags in `plot_curves.sh` / `plot_curves_lidc.sh`. The old RIGA loader builds
