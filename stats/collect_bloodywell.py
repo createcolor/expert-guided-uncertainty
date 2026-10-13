@@ -11,9 +11,12 @@ here, ``uncertain_classification/rejection_curves.py`` in the old repo). It read
   - the test markup, ``{well name: {..., "gt_result": 0/1}}``.
 
 Those files already hold everything per well, so nothing is recomputed. Wells
-whose uncertainties agree after ``round(u, 7)`` are discarded together by the
-old code; the uncertainties are stored rounded the same way, so the shared
-curve engine (``stats.sample_curves``) reproduces the old curves.
+with equal uncertainty are discarded together. The saved paper curves were
+made with ties taken at full precision (``TV_CE``, ``TV_gt_exps`` and ``CE``
+reproduce exactly without rounding), which is the default here. Some saved
+curves merged near-equal values (``experts_p(1-p)`` needs ``round(u, 3..10)``;
+the classification ``rejection_curves.py`` itself rounds to 7 digits); use
+``--round-digits METHOD=N`` for those.
 
 Usage:
     python -m stats.collect_bloodywell \
@@ -37,9 +40,6 @@ import numpy as np
 from stats.data import ItemLevelData
 from stats.sample_curves import make_grid, net_curves
 
-ROUND_DIGITS = 7      # get_accs_throwaway_rates merges uncertainties equal after round(u, 7)
-
-
 def _load(path: Path):
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
@@ -62,14 +62,15 @@ def wrong_matrix(misclass: dict, wells: list[str], n_nets: int) -> np.ndarray:
     return np.array([np.isin(wells, list(misclass[str(net)])) for net in range(n_nets)])
 
 
-def ranking_from_file(unc_to_wells: dict, wells: list[str], source: Path) -> np.ndarray:
-    """``[N]`` uncertainty per test well, rounded as the old code groups them."""
+def ranking_from_file(unc_to_wells: dict, wells: list[str], source: Path,
+                      digits: int | None = None) -> np.ndarray:
+    """``[N]`` uncertainty per test well, optionally rounded to ``digits`` (which sets the ties)."""
     per_well = {}
     for unc, names in unc_to_wells.items():
         for name in names:
             if name in per_well:
                 raise ValueError(f"{source.name}: well {name} appears more than once.")
-            per_well[name] = round(float(unc), ROUND_DIGITS)
+            per_well[name] = float(unc) if digits is None else round(float(unc), digits)
     missing = [w for w in wells if w not in per_well]
     if missing:
         # The old code never discards such wells; that case is not reproduced here.
@@ -110,12 +111,15 @@ def validate(method: str, uncertainty: np.ndarray, wrong: np.ndarray, rc_path: P
 
 
 def collect(test_markup: dict, misclass: dict, uncertainty_dir: Path, methods: list[str],
-            n_nets: int = 10, validate_dir: Path | None = None) -> ItemLevelData:
+            n_nets: int = 10, validate_dir: Path | None = None,
+            round_digits: dict[str, int] | None = None) -> ItemLevelData:
     wells = list(test_markup)
+    round_digits = round_digits or {}
     data = ItemLevelData(item_ids=np.array(wells), wrong=wrong_matrix(misclass, wells, n_nets))
     for method in methods:
         files = method_files(uncertainty_dir, method, n_nets)
-        rankings = [ranking_from_file(_load(path), wells, path) for path in files]
+        rankings = [ranking_from_file(_load(path), wells, path, round_digits.get(method))
+                    for path in files]
         data.uncertainty[method] = rankings[0] if len(rankings) == 1 else np.stack(rankings)
         if validate_dir is not None:
             validate(method, data.uncertainty[method], data.wrong, validate_dir / f"{method}.json")
@@ -134,6 +138,9 @@ def parse_args() -> argparse.Namespace:
                         help="Directory with the saved unc_<method>.json files.")
     parser.add_argument("--methods", nargs="+", required=True)
     parser.add_argument("--n-nets", type=int, default=10)
+    parser.add_argument("--round-digits", nargs="*", default=[], metavar="METHOD=N",
+                        help="Round a method's uncertainties to N digits before ranking (sets ties); "
+                             "default: full precision.")
     parser.add_argument("--validate-dir", type=Path, default=None,
                         help="Saved rejection_curves dir of the original run (<method>.json).")
     parser.add_argument("--out", type=Path, required=True, help="Output .npz file.")
@@ -145,8 +152,9 @@ def main() -> None:
     test_markup = _load(args.test_markup)
     misclass = (_load(args.misclass) if args.misclass is not None
                 else misclass_from_outputs(_load(args.outputs), test_markup))
+    round_digits = {m: int(n) for m, n in (item.rsplit("=", 1) for item in args.round_digits)}
     data = collect(test_markup, misclass, args.uncertainty_dir, args.methods, args.n_nets,
-                   args.validate_dir)
+                   args.validate_dir, round_digits)
     data.save(args.out)
     print(f"Saved {len(data.item_ids)} wells x {data.wrong.shape[0]} nets, "
           f"{len(data.uncertainty)} method(s) to {args.out}")

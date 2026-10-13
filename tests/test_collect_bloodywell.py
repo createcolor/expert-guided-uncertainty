@@ -170,17 +170,26 @@ def old_run(tmp_path):
 
 def test_reproduces_saved_curves(old_run):
     markup, misclass, unc_dir, rc_dir = old_run
-    data = collect(markup, misclass, unc_dir, ["tv", "mcmc"], N_NETS, validate_dir=rc_dir)
+    data = collect(markup, misclass, unc_dir, ["tv", "mcmc"], N_NETS, validate_dir=rc_dir,
+                   round_digits={"tv": 7, "mcmc": 7})
     assert data.uncertainty["tv"].shape == (150,)
     assert data.uncertainty["mcmc"].shape == (N_NETS, 150)
     assert data.wrong.shape == (N_NETS, 150)
+
+
+def test_validation_catches_other_ties(old_run):
+    """The fixture's near-ties only merge after round(u, 7); at full precision they do not."""
+    markup, misclass, unc_dir, rc_dir = old_run
+    with pytest.raises(AssertionError, match="differs"):
+        collect(markup, misclass, unc_dir, ["tv"], N_NETS, validate_dir=rc_dir)
 
 
 def test_validation_catches_other_mistakes(old_run):
     markup, misclass, unc_dir, rc_dir = old_run
     other = {net: wells[1:] for net, wells in misclass.items()}
     with pytest.raises(AssertionError, match="differs"):
-        collect(markup, other, unc_dir, ["tv"], N_NETS, validate_dir=rc_dir)
+        collect(markup, other, unc_dir, ["tv"], N_NETS, validate_dir=rc_dir,
+                round_digits={"tv": 7})
 
 
 def test_missing_well_is_an_error(old_run):

@@ -105,9 +105,13 @@ Expected AAC (×10⁻³) recorded in the config:
 - **BloodyWell** did not go through the QA pipeline. Its curves come from the
   classification `rejection_curves.py`, which reads one `{uncertainty: [well
   names]}` file per method and a `{net_id: [misclassified wells]}` file. Those
-  already identify every well, so `collect_bloodywell` only reads them. The old
-  code merges uncertainties equal after `round(u, 7)`; the collector stores them
-  rounded the same way. Per-net methods (MCMC) need `unc_<method>/*_<net>.json`
+  already identify every well, so `collect_bloodywell` only reads them. The
+  saved curves for `TV_CE`, `TV_gt_exps` and `CE` reproduce exactly with ties at
+  full precision (the default); `experts_p(1-p)` needs `--round-digits
+  "experts_p(1-p)=10"`. The local `unc_TV_pred_exps` (CAE) does **not**
+  reproduce the saved CAE curve (AAC 2.775 vs 2.814 ×10⁻³) at any precision: it
+  comes from a different CAE run. `TV_gt_exps = 0.5·CE² + 0.5·experts_p(1-p)`
+  exactly, so the CAE file should equal `0.5·CE² + 0.5·aleat_CAE`. Per-net methods (MCMC) need `unc_<method>/*_<net>.json`
   for nets 0..9. The local `unc_mcmc/` holds `mcmc_400 … mcmc_685` instead, so
   the per-net MCMC files used for the paper (`results/mcmc_scores/mcmc_<net>.json`
   in `rejection_curves_args.json`) have to be found on the server.
