@@ -41,11 +41,17 @@ python -m stats.collect_ue_items --old-repo <uncertainty-nlp-2> \
   --validate-dir <uncertainty-nlp-2>/uncertainty_estimation/results/bert_v2/uncertainty \
   --out results/paired_tests/pmqa_items.npz
 
-# BloodyWell: same collector, with the BloodyWell config_UE and its saved uncertainty dir
-python -m stats.collect_ue_items --old-repo <uncertainty-nlp-2> --config <bloodywell config_UE.json> \
+# BloodyWell: saved per-well uncertainties + the base nets' mistakes (no recomputation).
+# --misclass is <nets>_misclass.json from the classification inference.py; or pass
+# --outputs <nets>_<ep>ep_outputs.json to rebuild the mistakes from the outputs.
+python -m stats.collect_bloodywell \
+  --test-markup tasks/classification/markup/BloodyWell/test_dataset_10_10_80.json \
+  --misclass /alpha/korchagin/projects/expressto/nn/outputs/MobileNet_small_10_10_80_meta_8_misclass.json \
+  --uncertainty-dir <uncertainty-nlp>/uncertainty_estimation/results/bloodywell \
   --methods "TV_pred_exps_p(1-p)_sum_CE_var" "TV_CE_p(1-p)_sum_CE_var" \
             "TV_gt_exps_p(1-p)_sum_CE_var" mcmc \
-  --validate-dir <bloodywell uncertainty dir> --out results/paired_tests/bloodywell_items.npz
+  --validate-dir <uncertainty-nlp-2>/uncertainty_estimation/results/bloodywell/rejection_curves \
+  --out results/paired_tests/bloodywell_items.npz
 
 # RIGA and LIDC-IDRI: per-image Dice-rejection areas from the old segmentation scripts
 python -m stats.collect_segmentation --old-seg-dir <confidence-aware-uncertainty>/segmentation \
@@ -96,6 +102,15 @@ Expected AAC (×10⁻³) recorded in the config:
   old functions copy through verbatim. HUQ / DDU cannot be recovered this way:
   `calc_huq` / `calc_ddu` accumulate items across nets in one dict, so the
   collector rejects them with an explicit error.
+- **BloodyWell** did not go through the QA pipeline. Its curves come from the
+  classification `rejection_curves.py`, which reads one `{uncertainty: [well
+  names]}` file per method and a `{net_id: [misclassified wells]}` file. Those
+  already identify every well, so `collect_bloodywell` only reads them. The old
+  code merges uncertainties equal after `round(u, 7)`; the collector stores them
+  rounded the same way. Per-net methods (MCMC) need `unc_<method>/*_<net>.json`
+  for nets 0..9. The local `unc_mcmc/` holds `mcmc_400 … mcmc_685` instead, so
+  the per-net MCMC files used for the paper (`results/mcmc_scores/mcmc_<net>.json`
+  in `rejection_curves_args.json`) have to be found on the server.
 - **Precision per method.** The original PubMedQA run used `sign_figs_num=20`
   for the TV methods but 3 for MCMC (more ties). With `--validate-dir` the
   precision is read from the saved files; without it, pass `--sign-figs mcmc=3`.

@@ -1,7 +1,8 @@
 """Collect per-item uncertainties from the old ``uncertainty_estimation`` pipeline.
 
-Used for PubMedQA and BloodyWell, whose paper results came from
+Used for PubMedQA, whose paper results came from
 ``uncertainty_estimation/calculate_uncertainty.py`` (``uncertainty-nlp-2``).
+BloodyWell has its own collector, ``stats.collect_bloodywell``.
 
 Paired tests need to know which uncertainty belongs to which item, but the old
 pipeline saves ``{uncertainty: [[is_wrong_net0, ...], ...]}``: items are grouped
