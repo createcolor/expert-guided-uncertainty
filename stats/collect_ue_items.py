@@ -29,7 +29,6 @@ import copy
 import importlib
 import json
 import os
-import pickle
 import sys
 import tempfile
 from collections import Counter
@@ -39,63 +38,6 @@ import numpy as np
 
 from stats.data import ItemLevelData
 from stats.sample_curves import make_grid, net_curves
-
-
-OUTPUT_KEYS = ("path2outputs", "path2densities")
-
-
-def _int_net_keys(outputs: dict) -> dict:
-    """JSON stores net ids as strings; the old code indexes pickled outputs by int (``outputs[0]``)."""
-    if not isinstance(outputs, dict):
-        raise TypeError(f"Expected outputs as {{net_id: {{item_id: ...}}}}, got {type(outputs).__name__}.")
-    return {int(k) if isinstance(k, str) and k.isdigit() else k: v for k, v in outputs.items()}
-
-
-def pickle_json_outputs(config: dict, out_dir: Path) -> dict:
-    """Copy of ``config`` in which model outputs saved as ``.json`` point to equivalent ``.pkl`` files.
-
-    The old pipeline reads every model output with ``load_pickle`` and finds MCMC
-    samples with ``glob("*.pkl")``; BloodyWell outputs were saved as JSON. Each
-    ``path2outputs*`` / ``path2densities`` value that is a ``.json`` file, or a
-    directory holding ``.json`` but no ``.pkl`` files, is converted (file stems
-    are kept: ``calc_mcmc`` uses them as sample names). The old code is unchanged.
-    """
-    config = copy.deepcopy(config)
-    converted: dict[Path, str] = {}
-
-    def to_pickle(src: Path, dst: Path) -> None:
-        with open(src, "r", encoding="utf-8") as f:
-            outputs = _int_net_keys(json.load(f))
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        with open(dst, "wb") as f:
-            pickle.dump(outputs, f)
-
-    def convert(value: str) -> str:
-        path = Path(value).resolve()
-        if path in converted:
-            return converted[path]
-        if path.is_file() and path.suffix == ".json":
-            target = out_dir / f"{len(converted)}" / f"{path.stem}.pkl"
-            to_pickle(path, target)
-        elif path.is_dir() and not any(path.glob("*.pkl")) and any(path.glob("*.json")):
-            target = out_dir / f"{len(converted)}_{path.name}"
-            for src in sorted(path.glob("*.json")):
-                to_pickle(src, target / f"{src.stem}.pkl")
-        else:
-            return value
-        print(f"  {value}: JSON outputs converted to pickle for the old pipeline")
-        converted[path] = str(target)
-        return converted[path]
-
-    def walk(node: dict) -> None:
-        for key, value in node.items():
-            if isinstance(value, dict):
-                walk(value)
-            elif isinstance(value, str) and key.startswith(OUTPUT_KEYS):
-                node[key] = convert(value)
-
-    walk(config)
-    return config
 
 
 def build_mistakes(config: dict, load_pickle, load_json) -> dict[int, dict]:
@@ -205,21 +147,20 @@ def collect(old_repo: Path, module: str, config_path: Path, methods: list[str] |
     if missing:
         raise KeyError(f"Methods not in the config's UE_methods: {missing}")
 
+    mistakes = build_mistakes(config, old.load_pickle, old.load_json)
+    net_ids = list(mistakes)
+    if net_ids != list(range(len(net_ids))):
+        raise ValueError(f"Expected base nets 0..n-1 in order, got {net_ids}.")
+    item_ids = [str(item) for item in mistakes[0]]
+    wrong = np.array([[mistakes[net][item] for item in mistakes[0]] for net in net_ids])
+    mistake_vectors = {str(item): tuple(bool(mistakes[net][item]) for net in net_ids)
+                       for item in mistakes[0]}
+
+    tagged_mistakes = {net: {item: item for item in per_net} for net, per_net in mistakes.items()}
+    precision = method_precisions(config, methods, len(net_ids), validate_dir, sign_figs or {})
+
+    data = ItemLevelData(item_ids=np.array(item_ids), wrong=wrong)
     with tempfile.TemporaryDirectory() as tmp:
-        config = pickle_json_outputs(config, Path(tmp) / "outputs_pkl")
-        mistakes = build_mistakes(config, old.load_pickle, old.load_json)
-        net_ids = list(mistakes)
-        if net_ids != list(range(len(net_ids))):
-            raise ValueError(f"Expected base nets 0..n-1 in order, got {net_ids}.")
-        item_ids = [str(item) for item in mistakes[0]]
-        wrong = np.array([[mistakes[net][item] for item in mistakes[0]] for net in net_ids])
-        mistake_vectors = {str(item): tuple(bool(mistakes[net][item]) for net in net_ids)
-                           for item in mistakes[0]}
-
-        tagged_mistakes = {net: {item: item for item in per_net} for net, per_net in mistakes.items()}
-        precision = method_precisions(config, methods, len(net_ids), validate_dir, sign_figs or {})
-
-        data = ItemLevelData(item_ids=np.array(item_ids), wrong=wrong)
         # The old run may have used different precisions per method, and the
         # precision decides which uncertainties tie -- run once per precision.
         for figs in sorted(set(precision.values())):

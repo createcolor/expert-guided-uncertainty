@@ -96,11 +96,6 @@ Expected AAC (×10⁻³) recorded in the config:
   old functions copy through verbatim. HUQ / DDU cannot be recovered this way:
   `calc_huq` / `calc_ddu` accumulate items across nets in one dict, so the
   collector rejects them with an explicit error.
-- **JSON outputs (BloodyWell).** The old code reads model outputs only with
-  `load_pickle`, indexes nets by int and finds MCMC samples with `glob("*.pkl")`.
-  The collector therefore converts every `path2outputs*` / `path2densities` entry
-  that is a `.json` file (or a directory of `.json` files) into an equivalent
-  pickle with int net ids in a temp dir, and runs the old code on that.
 - **Precision per method.** The original PubMedQA run used `sign_figs_num=20`
   for the TV methods but 3 for MCMC (more ties). With `--validate-dir` the
   precision is read from the saved files; without it, pass `--sign-figs mcmc=3`.
