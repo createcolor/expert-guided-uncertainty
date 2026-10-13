@@ -63,8 +63,13 @@ def wrong_matrix(misclass: dict, wells: list[str], n_nets: int) -> np.ndarray:
 
 
 def ranking_from_file(unc_to_wells: dict, wells: list[str], source: Path,
-                      digits: int | None = None) -> np.ndarray:
-    """``[N]`` uncertainty per test well, optionally rounded to ``digits`` (which sets the ties)."""
+                      digits: int | None = None, missing_lowest: bool = False) -> np.ndarray:
+    """``[N]`` uncertainty per test well, optionally rounded to ``digits`` (which sets the ties).
+
+    With ``missing_lowest``, test wells absent from the file get ``-inf``: the old
+    code never discards them, i.e. ranks them as least uncertain. (A ``NaN``
+    uncertainty ranks as the highest in the curve engine.)
+    """
     per_well = {}
     for unc, names in unc_to_wells.items():
         for name in names:
@@ -72,7 +77,11 @@ def ranking_from_file(unc_to_wells: dict, wells: list[str], source: Path,
                 raise ValueError(f"{source.name}: well {name} appears more than once.")
             per_well[name] = float(unc) if digits is None else round(float(unc), digits)
     missing = [w for w in wells if w not in per_well]
-    if missing:
+    if missing and missing_lowest:
+        print(f"  {source.name}: {len(missing)} test wells have no uncertainty; "
+              "ranked as least uncertain, as the old code does.")
+        per_well.update({w: -np.inf for w in missing})
+    elif missing:
         # The old code never discards such wells; that case is not reproduced here.
         raise ValueError(f"{source.name}: {len(missing)} test wells have no uncertainty, "
                          f"e.g. {missing[:3]}.")
@@ -113,15 +122,17 @@ def validate(method: str, uncertainty: np.ndarray, wrong: np.ndarray, rc_path: P
 def collect(test_markup: dict, misclass: dict, uncertainty_dir: Path, methods: list[str],
             n_nets: int = 10, validate_dir: Path | None = None,
             round_digits: dict[str, int] | None = None,
-            skip_validate: set[str] | None = None) -> ItemLevelData:
+            skip_validate: set[str] | None = None,
+            missing_lowest: set[str] | None = None) -> ItemLevelData:
     wells = list(test_markup)
     round_digits = round_digits or {}
     skip_validate = skip_validate or set()
+    missing_lowest = missing_lowest or set()
     data = ItemLevelData(item_ids=np.array(wells), wrong=wrong_matrix(misclass, wells, n_nets))
     for method in methods:
         files = method_files(uncertainty_dir, method, n_nets)
-        rankings = [ranking_from_file(_load(path), wells, path, round_digits.get(method))
-                    for path in files]
+        rankings = [ranking_from_file(_load(path), wells, path, round_digits.get(method),
+                                      method in missing_lowest) for path in files]
         data.uncertainty[method] = rankings[0] if len(rankings) == 1 else np.stack(rankings)
         if validate_dir is not None and method in skip_validate:
             print(f"  {method}: not validated against a saved curve (--skip-validate)")
@@ -150,6 +161,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--skip-validate", nargs="*", default=[], metavar="METHOD",
                         help="Methods whose saved curve is not from the paper's run (BloodyWell CAE); "
                              "run_paired_tests still checks their AAC against expected_aac.")
+    parser.add_argument("--missing-lowest", nargs="*", default=[], metavar="METHOD",
+                        help="Methods whose file lacks some test wells (BloodyWell entropy); those "
+                             "wells are ranked least uncertain, as the old code never discards them.")
     parser.add_argument("--out", type=Path, required=True, help="Output .npz file.")
     return parser.parse_args()
 
@@ -161,7 +175,7 @@ def main() -> None:
                 else misclass_from_outputs(_load(args.outputs), test_markup))
     round_digits = {m: int(n) for m, n in (item.rsplit("=", 1) for item in args.round_digits)}
     data = collect(test_markup, misclass, args.uncertainty_dir, args.methods, args.n_nets,
-                   args.validate_dir, round_digits, set(args.skip_validate))
+                   args.validate_dir, round_digits, set(args.skip_validate), set(args.missing_lowest))
     data.save(args.out)
     print(f"Saved {len(data.item_ids)} wells x {data.wrong.shape[0]} nets, "
           f"{len(data.uncertainty)} method(s) to {args.out}")

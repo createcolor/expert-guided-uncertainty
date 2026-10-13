@@ -9,7 +9,9 @@ inflates significance.
 Here the **independent units are the test items**: questions (PubMedQA), wells
 (BloodyWell) and images (LIDC-IDRI, RIGA). For each dataset we compare our
 method, *Total variance, CAE*, with three references: *Total variance, base*
-(strong baseline), *MCMC* (SotA) and *Total variance, experts* (expert method).
+(strong baseline), a SotA method (*Entropy and MI* for BloodyWell and PubMedQA,
+*MCMC* for LIDC-IDRI and RIGA, as reported in the paper's Tables 1 and 2) and
+*Total variance, experts* (expert method).
 
 ## What is reported
 
@@ -41,7 +43,7 @@ this repo; outputs go to `results/paired_tests/` (git-ignored).
 python -m stats.collect_ue_items --old-repo <uncertainty-nlp-2> \
   --config <uncertainty-nlp-2>/uncertainty_estimation/config_UE.json \
   --methods "TV_pred_exps_p(1-p)_sum_CE_var" "TV_CE_p(1-p)_sum_CE_var" \
-            "TV_gt_exps_p(1-p)_sum_CE_var" \
+            "TV_gt_exps_p(1-p)_sum_CE_var" entropy_CE_sum_CE \
   --validate-dir <uncertainty-nlp-2>/uncertainty_estimation/results/bert_v2/uncertainty \
   --out results/paired_tests/pmqa_items.npz
 
@@ -50,13 +52,14 @@ python -m stats.collect_ue_items --old-repo <uncertainty-nlp-2> \
 # --outputs <nets>_<ep>ep_outputs.json to rebuild the mistakes from the outputs.
 # The saved CAE curve is from another run (see notes), so CAE is not validated
 # against it; run_paired_tests checks its AAC against the paper's 2.18 instead.
-# Add mcmc to --methods once the per-net MCMC files are found (see notes).
+# Entropy's file lacks some wells; --missing-lowest ranks them as the old code did.
 python -m stats.collect_bloodywell \
   --test-markup tasks/classification/markup/BloodyWell/test_dataset_10_10_80.json \
   --misclass /alpha/korchagin/projects/expressto/nn/outputs/MobileNet_small_10_10_80_meta_8_misclass.json \
   --uncertainty-dir <uncertainty-nlp>/uncertainty_estimation/results/bloodywell \
   --methods "TV_pred_exps_p(1-p)_sum_CE_var" "TV_CE_p(1-p)_sum_CE_var" \
-            "TV_gt_exps_p(1-p)_sum_CE_var" \
+            "TV_gt_exps_p(1-p)_sum_CE_var" entropy \
+  --missing-lowest entropy \
   --skip-validate "TV_pred_exps_p(1-p)_sum_CE_var" \
   --validate-dir <uncertainty-nlp-2>/uncertainty_estimation/results/bloodywell/rejection_curves \
   --out results/paired_tests/bloodywell_items.npz
@@ -99,14 +102,14 @@ python -m stats.run_paired_tests -c stats/configs/paired_tests.json -o results/p
 Expected AAC (×10⁻³) recorded in the config, with the paper's value in brackets
 where it differs in the second decimal (all within one unit of that digit):
 
-| Dataset | CAE (ours) | TV base | MCMC | TV experts |
+| Dataset | CAE (ours) | TV base | SotA | TV experts |
 |---|---:|---:|---:|---:|
-| BloodyWell | 2.18 | 4.28 | 4.85 (4.86) | 2.36 (2.37) |
-| LIDC-IDRI | 2.44 | 2.63 | 3.96 | 1.38 |
-| RIGA | 6.45 | 12.53 (12.54) | 27.12 | 6.27 |
-| PubMedQA | 100.85 | 110.32 | — | 66.11 |
+| BloodyWell | 2.18 | 4.28 | 4.00 (Entropy and MI) | 2.36 (2.37) |
+| LIDC-IDRI | 2.44 | 2.63 | 3.96 (MCMC) | 1.38 |
+| RIGA | 6.45 | 12.53 (12.54) | 27.12 (MCMC) | 6.27 |
+| PubMedQA | 100.85 | 110.32 | 111.05 (Entropy and MI) | 66.11 |
 
-PubMedQA and BloodyWell (except MCMC) were reproduced locally from collected data.
+PubMedQA and BloodyWell were reproduced locally from collected data.
 
 ## Notes on the old pipelines
 
@@ -130,7 +133,13 @@ PubMedQA and BloodyWell (except MCMC) were reproduced locally from collected dat
   well and also rounds to 2.18. The paper's BloodyWell ± values are larger than
   the per-net std for every method (e.g. 0.33 vs 0.30 for CAE); PubMedQA's match.
   `stats.scan_bloodywell_candidates` ranks candidate files against a saved
-  curve. Per-net methods (MCMC) need `unc_<method>/*_<net>.json`
+  curve. **Entropy and MI:** `unc_entropy.json` lacks 514 test wells, all
+  classified correctly by every net (their entropies presumably collided as dict
+  keys). The old code never discards wells missing from the file, so
+  `--missing-lowest entropy` ranks them as least uncertain; this reproduces the
+  saved curve exactly. One well has a `NaN` entropy, which the curve engine ranks
+  as most uncertain, also as in the saved curve. MCMC (not used for BloodyWell):
+  per-net methods need `unc_<method>/*_<net>.json`
   for nets 0..9. The local `unc_mcmc/` holds `mcmc_400 … mcmc_685` instead, so
   the per-net MCMC files used for the paper (`results/mcmc_scores/mcmc_<net>.json`
   in `rejection_curves_args.json`) have to be found on the server.

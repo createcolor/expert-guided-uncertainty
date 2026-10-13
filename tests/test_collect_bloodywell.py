@@ -210,3 +210,22 @@ def test_skip_validate(old_run):
     data = collect(markup, misclass, unc_dir, ["tv"], N_NETS, validate_dir=rc_dir,
                    skip_validate={"tv"})                     # would fail validation at full precision
     assert data.uncertainty["tv"].shape == (150,)
+
+
+def test_missing_wells_ranked_lowest_reproduce_old_curve(tmp_path):
+    """The old code never discards wells absent from the uncertainty file."""
+    rng = np.random.default_rng(1)
+    wells = [f"w{i}.png" for i in range(80)]
+    markup = {w: {"gt_result": int(rng.integers(2))} for w in wells}
+    misclass = {str(n): [w for w in wells[:40] if rng.random() < 0.3] for n in range(N_NETS)}
+    unc = {str(float(u)): [w] for w, u in zip(wells[:60], rng.random(60))}   # last 20 wells missing
+    (tmp_path / "unc").mkdir()
+    (tmp_path / "rcs").mkdir()
+    (tmp_path / "unc" / "unc_ent.json").write_text(json.dumps(unc))
+    _old_get_rc_info_averaging_mode([unc], markup, n_bins=1000, misclassified_alvs=misclass,
+                                    path2save_markup=tmp_path / "rcs" / "ent.json",
+                                    net_ids=range(N_NETS))
+    with pytest.raises(ValueError, match="no uncertainty"):
+        collect(markup, misclass, tmp_path / "unc", ["ent"], N_NETS)
+    collect(markup, misclass, tmp_path / "unc", ["ent"], N_NETS, validate_dir=tmp_path / "rcs",
+            missing_lowest={"ent"})

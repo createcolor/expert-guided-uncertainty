@@ -3,6 +3,7 @@
     "comparators": [
         "Total variance, base",
         "MCMC",
+        "Entropy and MI",
         "Total variance, experts"
     ],
     "n_boot": 10000,
@@ -22,23 +23,24 @@
             "methods": {
                 "Total variance, CAE (ours)": "TV_pred_exps_p(1-p)_sum_CE_var",
                 "Total variance, base": "TV_CE_p(1-p)_sum_CE_var",
-                "MCMC": "mcmc",
+                "Entropy and MI": "entropy",
                 "Total variance, experts": "TV_gt_exps_p(1-p)_sum_CE_var"
             },
             "expected_aac_source": "TV_CE / TV_gt_exps / mcmc: uncertainty-nlp-2 results/bloodywell/rejection_curves/*.json (TV_CE, TV_gt_exps also reproduced from uncertainty-nlp results/bloodywell/unc_*.json + MobileNet_small_10_10_80_meta_8_misclass.json). CAE: uncertainty-nlp results/bloodywell/unc_TV_pred_exps_p(1-p)_sum_CE_var.json, which reproduces Table 1 (2.18); the saved CAE curve in uncertainty-nlp-2 (2.22) is from another run.",
             "expected_aac": {
                 "TV_pred_exps_p(1-p)_sum_CE_var": 0.0021812502774329603,
                 "TV_CE_p(1-p)_sum_CE_var": 0.004281118648852504,
-                "mcmc": 0.004854656013635105,
-                "TV_gt_exps_p(1-p)_sum_CE_var": 0.0023649694855928886
+                "TV_gt_exps_p(1-p)_sum_CE_var": 0.0023649694855928886,
+                "entropy": 0.004002058208173044
             },
             "paper_aac": {
                 "TV_pred_exps_p(1-p)_sum_CE_var": 0.00218,
                 "TV_CE_p(1-p)_sum_CE_var": 0.00428,
-                "mcmc": 0.00486,
-                "TV_gt_exps_p(1-p)_sum_CE_var": 0.00237
+                "TV_gt_exps_p(1-p)_sum_CE_var": 0.00237,
+                "entropy": 0.004
             },
-            "paper_aac_source": "new_paper.pdf, Table 1 (classification, QA) / Table 2 (segmentation), x1e-3, 2 decimals"
+            "paper_aac_source": "new_paper.pdf, Table 1 (classification, QA) / Table 2 (segmentation), x1e-3, 2 decimals",
+            "methods_note": "Entropy and MI replaces MCMC as the SotA comparator. unc_entropy.json lacks 514 test wells (all correct for every net); collect with --missing-lowest entropy, which reproduces the saved curve."
         },
         {
             "name": "LIDC-IDRI",
@@ -64,7 +66,8 @@
                 "mcmc": 0.00396,
                 "tv_experts": 0.00138
             },
-            "paper_aac_source": "new_paper.pdf, Table 1 (classification, QA) / Table 2 (segmentation), x1e-3, 2 decimals"
+            "paper_aac_source": "new_paper.pdf, Table 1 (classification, QA) / Table 2 (segmentation), x1e-3, 2 decimals",
+            "methods_note": "Entropy and MI is not reported for segmentation; MCMC is the SotA comparator."
         },
         {
             "name": "RIGA",
@@ -90,7 +93,8 @@
                 "mcmc": 0.02712,
                 "tv_experts": 0.00627
             },
-            "paper_aac_source": "new_paper.pdf, Table 1 (classification, QA) / Table 2 (segmentation), x1e-3, 2 decimals"
+            "paper_aac_source": "new_paper.pdf, Table 1 (classification, QA) / Table 2 (segmentation), x1e-3, 2 decimals",
+            "methods_note": "Entropy and MI is not reported for segmentation; MCMC is the SotA comparator."
         },
         {
             "name": "PubMedQA",
@@ -99,19 +103,22 @@
             "methods": {
                 "Total variance, CAE (ours)": "TV_pred_exps_p(1-p)_sum_CE_var",
                 "Total variance, base": "TV_CE_p(1-p)_sum_CE_var",
+                "Entropy and MI": "entropy_CE_sum_CE",
                 "Total variance, experts": "TV_gt_exps_p(1-p)_sum_CE_var"
             },
             "expected_aac_source": "uncertainty-nlp-2: uncertainty_estimation/results/bert_v2/rejection_curves_data/*.json",
             "expected_aac": {
                 "TV_pred_exps_p(1-p)_sum_CE_var": 0.10085257641122117,
                 "TV_CE_p(1-p)_sum_CE_var": 0.11032413464868185,
-                "TV_gt_exps_p(1-p)_sum_CE_var": 0.06611290794577049
+                "TV_gt_exps_p(1-p)_sum_CE_var": 0.06611290794577049,
+                "entropy_CE_sum_CE": 0.1110475364557188
             },
-            "methods_note": "MCMC is not reported for PubMedQA in the paper (Table 1).",
+            "methods_note": "Entropy and MI is the SotA comparator; MCMC is not reported for PubMedQA in the paper (Table 1).",
             "paper_aac": {
                 "TV_pred_exps_p(1-p)_sum_CE_var": 0.10085,
                 "TV_CE_p(1-p)_sum_CE_var": 0.11032,
-                "TV_gt_exps_p(1-p)_sum_CE_var": 0.06611
+                "TV_gt_exps_p(1-p)_sum_CE_var": 0.06611,
+                "entropy_CE_sum_CE": 0.11105
             },
             "paper_aac_source": "new_paper.pdf, Table 1 (classification, QA) / Table 2 (segmentation), x1e-3, 2 decimals"
         }
