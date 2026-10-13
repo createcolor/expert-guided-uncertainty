@@ -1,0 +1,93 @@
+{
+    "ours": "Total variance, CAE (ours)",
+    "comparators": [
+        "Total variance, base",
+        "MCMC",
+        "Total variance, experts"
+    ],
+    "n_boot": 10000,
+    "seed": 0,
+    "ci": 0.95,
+    "alpha": 0.05,
+    "r_max": 0.8,
+    "n_bins": 1000,
+    "scale": 1000,
+    "reproduction_rtol": 0.0001,
+    "reproduction_atol": 1e-07,
+    "datasets": [
+        {
+            "name": "BloodyWell",
+            "level": "item",
+            "data": "results/paired_tests/bloodywell_items.npz",
+            "methods": {
+                "Total variance, CAE (ours)": "TV_pred_exps_p(1-p)_sum_CE_var",
+                "Total variance, base": "TV_CE_p(1-p)_sum_CE_var",
+                "MCMC": "mcmc",
+                "Total variance, experts": "TV_gt_exps_p(1-p)_sum_CE_var"
+            },
+            "expected_aac_source": "uncertainty-nlp-2: uncertainty_estimation/results/bloodywell/rejection_curves/*.json",
+            "expected_aac": {
+                "TV_pred_exps_p(1-p)_sum_CE_var": 0.0028144603543534116,
+                "TV_CE_p(1-p)_sum_CE_var": 0.004874970000203856,
+                "mcmc": 0.005448507364986457,
+                "TV_gt_exps_p(1-p)_sum_CE_var": 0.0029588208369442405
+            }
+        },
+        {
+            "name": "LIDC-IDRI",
+            "level": "image",
+            "data": "results/paired_tests/lidc_images.npz",
+            "oracle": "oracle",
+            "methods": {
+                "Total variance, CAE (ours)": "tv_cae",
+                "Total variance, base": "tv_base",
+                "MCMC": "mcmc",
+                "Total variance, experts": "tv_experts"
+            },
+            "expected_aac_source": "confidence-aware-uncertainty: segmentation/rcs/e1_lidc_10k_microavg_std_full_dice/*/dice_scores.npy",
+            "expected_aac": {
+                "tv_cae": 0.0024439549386495395,
+                "tv_base": 0.0026288664418702814,
+                "mcmc": 0.003961958755859063,
+                "tv_experts": 0.0013838415616751255
+            }
+        },
+        {
+            "name": "RIGA",
+            "level": "image",
+            "data": "results/paired_tests/riga_images.npz",
+            "oracle": "oracle",
+            "methods": {
+                "Total variance, CAE (ours)": "tv_cae",
+                "Total variance, base": "tv_base",
+                "MCMC": "mcmc",
+                "Total variance, experts": "tv_experts"
+            },
+            "expected_aac_source": "confidence-aware-uncertainty: segmentation/rcs/e3_10k_microavg_std_full_dice/*/dice_scores.npy",
+            "expected_aac": {
+                "tv_cae": 0.006447604327797995,
+                "tv_base": 0.012532639247774546,
+                "mcmc": 0.027122565222382454,
+                "tv_experts": 0.0062689966285121804
+            }
+        },
+        {
+            "name": "PubMedQA",
+            "level": "item",
+            "data": "results/paired_tests/pmqa_items.npz",
+            "methods": {
+                "Total variance, CAE (ours)": "TV_pred_exps_p(1-p)_sum_CE_var",
+                "Total variance, base": "TV_CE_p(1-p)_sum_CE_var",
+                "MCMC": "mcmc",
+                "Total variance, experts": "TV_gt_exps_p(1-p)_sum_CE_var"
+            },
+            "expected_aac_source": "uncertainty-nlp-2: uncertainty_estimation/results/bert_v2/rejection_curves_data/*.json",
+            "expected_aac": {
+                "TV_pred_exps_p(1-p)_sum_CE_var": 0.14238227641122117,
+                "TV_CE_p(1-p)_sum_CE_var": 0.15185383464868185,
+                "mcmc": 0.1733276550640101,
+                "TV_gt_exps_p(1-p)_sum_CE_var": 0.1076426079457705
+            }
+        }
+    ]
+}

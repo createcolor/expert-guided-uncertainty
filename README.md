@@ -81,6 +81,8 @@ expert-guided-uncertainty/
 │   ├── analyze_experts.py
 │   └── plot_expert_size.py
 │
+├── stats/                     # Paired significance tests (see stats/README.md)
+│
 ├── tests/
 │   ├── test_metrics.py                       # AAC, AUROC
 │   ├── test_variance_uncertainty.py          # TV decomposition
@@ -285,6 +287,17 @@ python figures/error_auroc.py
 # Ablation: ensemble size
 python figures/ensemble_size_heatmap.py
 ```
+
+---
+
+## Statistical significance
+
+`stats/` runs paired tests of *Total variance, CAE* against *Total variance, base*,
+*MCMC* and *Total variance, experts* on every dataset: a paired bootstrap over test
+items (and a Wilcoxon signed-rank test over images for segmentation), with Holm
+correction. Unlike the critical-difference analysis, it does not treat points of
+the same rejection curve as independent. See [stats/README.md](stats/README.md)
+for the server workflow and the checks that tie the results to the paper's numbers.
 
 ---
 

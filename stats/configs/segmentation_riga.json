@@ -1,0 +1,12 @@
+{
+    "variant": "microavg",
+    "rates": {"start": 0.0001, "stop": 1.0, "num": 10000},
+    "r_max": 0.8,
+    "methods": {
+        "tv_cae":              {"config": "configs/rejection_configs/main/tv_cae.json", "final_activation": true},
+        "tv_base":             {"config": "configs/rejection_configs/main/tv_base.json", "final_activation": true},
+        "tv_experts":          {"config": "configs/rejection_configs/main/tv_experts.json"},
+        "mcmc":                {"config": "configs/rejection_configs/main/mcmc.json"},
+        "oracle":              {"config": "configs/rejection_configs/main/oracle.json"}
+    }
+}
